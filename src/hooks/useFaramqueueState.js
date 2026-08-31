@@ -7,6 +7,57 @@ const getDateValue = (date = new Date()) =>
 
 const createQueueForDate = (date) => [];
 
+const createSampleQueueForDate = (date) => [
+  {
+    id: "sample-1",
+    name: "Rajesh Kumar",
+    phone: "9876543210",
+    slot: "08:00 AM",
+    crop: "Wheat",
+    quantity: 210,
+    token: "FQ-1001",
+    status: "Queued",
+    actualWeight: "",
+    paidAmount: "",
+    lateMinutes: "",
+    paymentStatus: "Pending",
+    reportSaved: false,
+    date,
+  },
+  {
+    id: "sample-2",
+    name: "Suresh Yadav",
+    phone: "9812345678",
+    slot: "09:15 AM",
+    crop: "Rice",
+    quantity: 180,
+    token: "FQ-1002",
+    status: "Verified",
+    actualWeight: "",
+    paidAmount: "",
+    lateMinutes: "",
+    paymentStatus: "Pending",
+    reportSaved: false,
+    date,
+  },
+  {
+    id: "sample-3",
+    name: "Pawan Verma",
+    phone: "9023456781",
+    slot: "10:30 AM",
+    crop: "Mustard",
+    quantity: 95,
+    token: "FQ-1003",
+    status: "Queued",
+    actualWeight: "",
+    paidAmount: "",
+    lateMinutes: "",
+    paymentStatus: "Pending",
+    reportSaved: false,
+    date,
+  },
+];
+
 const initialStorage = [
   { crop: "Wheat", stock: 1040, capacity: 1500 },
   { crop: "Rice", stock: 820, capacity: 1200 },
@@ -45,7 +96,7 @@ const loadState = () => {
   const today = getDateValue();
   const fallback = {
     selectedDate: today,
-    dailyQueueByDate: { [today]: [] },
+    dailyQueueByDate: { [today]: createSampleQueueForDate(today) },
     storage: initialStorage,
     dateRecords: { [today]: [] },
   };
@@ -55,10 +106,16 @@ const loadState = () => {
     if (!raw) return fallback;
 
     const parsed = JSON.parse(raw);
+    const queueByDate = parsed.dailyQueueByDate ?? {};
+    const seededQueueByDate = { ...queueByDate };
+
+    if (!Array.isArray(seededQueueByDate[today]) || seededQueueByDate[today].length === 0) {
+      seededQueueByDate[today] = createSampleQueueForDate(today);
+    }
 
     return {
       selectedDate: parsed.selectedDate ?? today,
-      dailyQueueByDate: parsed.dailyQueueByDate ?? { [today]: [] },
+      dailyQueueByDate: seededQueueByDate,
       storage: parsed.storage ?? initialStorage,
       dateRecords: parsed.dateRecords ?? { [today]: [] },
     };
@@ -104,10 +161,12 @@ export const useFaramqueueState = () => {
       )
       .map((farmer) => ({ ...farmer, date: farmer.date ?? selectedDate }));
 
-    const historicalEntries = (dateRecords[selectedDate] ?? []).map((entry) => ({
-      ...entry,
-      date: entry.date ?? selectedDate,
-    }));
+    const historicalEntries = (dateRecords[selectedDate] ?? []).map(
+      (entry) => ({
+        ...entry,
+        date: entry.date ?? selectedDate,
+      }),
+    );
 
     const mergedEntries = [...historicalEntries, ...queueEntries];
     const byId = {};
@@ -116,14 +175,16 @@ export const useFaramqueueState = () => {
       byId[String(entry.id)] = entry;
     });
 
-    return Object.values(byId).sort(
-      (a, b) => Number(b.id) - Number(a.id),
-    );
+    return Object.values(byId).sort((a, b) => Number(b.id) - Number(a.id));
   }, [dateRecords, farmers, selectedDate]);
 
   const queueStats = useMemo(() => {
-    const queued = farmers.filter((farmer) => farmer.status !== "Cleared").length;
-    const processed = farmers.filter((farmer) => farmer.status === "Cleared").length;
+    const queued = farmers.filter(
+      (farmer) => farmer.status !== "Cleared",
+    ).length;
+    const processed = farmers.filter(
+      (farmer) => farmer.status === "Cleared",
+    ).length;
 
     return [
       {
@@ -149,10 +210,19 @@ export const useFaramqueueState = () => {
   };
 
   const updateFarmer = (id, field, value) => {
+    const patch = { [field]: value };
+
     setDailyQueueByDate((prev) => ({
       ...prev,
       [selectedDate]: (prev[selectedDate] ?? []).map((farmer) =>
-        farmer.id === id ? { ...farmer, [field]: value } : farmer,
+        farmer.id === id ? { ...farmer, ...patch } : farmer,
+      ),
+    }));
+
+    setDateRecords((prev) => ({
+      ...prev,
+      [selectedDate]: (prev[selectedDate] ?? []).map((entry) =>
+        entry.id === id ? { ...entry, ...patch } : entry,
       ),
     }));
   };
@@ -170,7 +240,12 @@ export const useFaramqueueState = () => {
   };
 
   const handlePaymentStatusChange = (id, nextStatus) => {
-    const farmer = farmers.find((entry) => entry.id === id);
+    const liveFarmer = farmers.find((entry) => entry.id === id);
+    const historicalFarmer = (dateRecords[selectedDate] ?? []).find(
+      (entry) => entry.id === id,
+    );
+    const farmer = liveFarmer ?? historicalFarmer;
+
     if (!farmer) return;
 
     const currentStatus = farmer.paymentStatus ?? "Pending";

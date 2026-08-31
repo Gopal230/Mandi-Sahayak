@@ -139,15 +139,23 @@ const QueuePage = ({
           <h3 className="text-xl font-bold text-[#3d281b]">{headerTitle}</h3>
         </div>
 
-        {filteredFarmers.map((farmer, index) => (
-          <Slot
-            key={farmer.id}
-            farmer={farmer}
-            isHighlighted={index === 0 && selectedStatus === "Active"}
-            onUpdateFarmer={onUpdateFarmer}
-            onClearFarmer={handleClearFarmer}
-          />
-        ))}
+        {filteredFarmers.length === 0 ? (
+          <div className="rounded-2xl border border-[#ecd5a7] bg-[#fdf0d9] p-5 text-[#5c402f]">
+            {selectedStatus === "Active"
+              ? "No active slots for this date. Book a farmer to add the next queue entry."
+              : "No cleared slots for this date yet."}
+          </div>
+        ) : (
+          filteredFarmers.map((farmer, index) => (
+            <Slot
+              key={farmer.id}
+              farmer={farmer}
+              isHighlighted={index === 0 && selectedStatus === "Active"}
+              onUpdateFarmer={onUpdateFarmer}
+              onClearFarmer={handleClearFarmer}
+            />
+          ))
+        )}
       </div>
     </div>
   );
