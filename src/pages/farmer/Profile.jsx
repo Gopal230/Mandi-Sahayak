@@ -10,15 +10,27 @@ function Profile() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
-    const savedFarmer = localStorage.getItem("farmerData");
+    const loadFarmer = () => {
+      const savedFarmer = localStorage.getItem("farmerData");
 
-    if (savedFarmer) {
-      try {
-        setFarmer(JSON.parse(savedFarmer));
-      } catch {
+      if (savedFarmer) {
+        try {
+          setFarmer(JSON.parse(savedFarmer));
+        } catch {
+          setFarmer(null);
+        }
+      } else {
         setFarmer(null);
       }
-    }
+    };
+
+    loadFarmer();
+
+    window.addEventListener("focus", loadFarmer);
+
+    return () => {
+      window.removeEventListener("focus", loadFarmer);
+    };
   }, []);
 
   const changeLanguage = (language) => {
@@ -30,9 +42,12 @@ function Profile() {
     localStorage.removeItem("bookingData");
     localStorage.removeItem("notificationData");
     localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("pendingPhone");
 
     setShowLogoutConfirm(false);
-    navigate("/");
+    setFarmer(null);
+
+    navigate("/login");
   };
 
   const farmerName =
@@ -41,8 +56,8 @@ function Profile() {
     t("farmer");
 
   const mobileNumber =
-    farmer?.mobile ||
     farmer?.phone ||
+    farmer?.mobile ||
     farmer?.mobileNumber ||
     null;
 
@@ -51,19 +66,14 @@ function Profile() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
-
       <header className="bg-green-700 text-white">
         <div className="mx-auto w-full max-w-lg px-4 py-4">
-
           <div className="flex items-center justify-between gap-3">
-
             <div className="flex min-w-0 items-center gap-3">
-
               <button
                 type="button"
                 onClick={() => navigate("/dashboard")}
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-2xl hover:bg-white/10"
-                aria-label={t("back")}
               >
                 ←
               </button>
@@ -77,11 +87,9 @@ function Profile() {
                   {t("profile")}
                 </h1>
               </div>
-
             </div>
 
             <div className="flex shrink-0 items-center rounded-full bg-white/15 p-1">
-
               <button
                 type="button"
                 onClick={() => changeLanguage("en")}
@@ -105,20 +113,14 @@ function Profile() {
               >
                 {t("hindi")}
               </button>
-
             </div>
-
           </div>
-
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-lg px-4 py-5">
-
         <section className="rounded-2xl bg-white p-5 shadow-sm">
-
           <div className="flex items-center gap-4">
-
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-green-100 text-2xl font-bold text-green-700">
               {farmerName.charAt(0).toUpperCase()}
             </div>
@@ -132,22 +134,17 @@ function Profile() {
                 {t("farmer")}
               </p>
             </div>
-
           </div>
-
         </section>
 
         <section className="mt-4">
-
           <h2 className="mb-3 text-base font-bold text-slate-900">
             {t("yourInformation")}
           </h2>
 
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
-
             {mobileNumber && (
               <div className="flex items-center gap-4 border-b border-slate-100 p-4">
-
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-lg">
                   📱
                 </div>
@@ -161,13 +158,11 @@ function Profile() {
                     {mobileNumber}
                   </p>
                 </div>
-
               </div>
             )}
 
             {district && (
               <div className="flex items-center gap-4 border-b border-slate-100 p-4">
-
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 text-lg">
                   📍
                 </div>
@@ -181,13 +176,11 @@ function Profile() {
                     {district}
                   </p>
                 </div>
-
               </div>
             )}
 
             {village && (
               <div className="flex items-center gap-4 p-4">
-
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-lg">
                   🏡
                 </div>
@@ -201,46 +194,22 @@ function Profile() {
                     {village}
                   </p>
                 </div>
-
               </div>
             )}
-
-            {!mobileNumber && !district && !village && (
-              <div className="p-5 text-center">
-
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-xl">
-                  👤
-                </div>
-
-                <p className="mt-3 text-sm font-semibold text-slate-900">
-                  {t("farmer")}
-                </p>
-
-                <p className="mt-1 text-xs text-slate-500">
-                  {t("noProfileInformation")}
-                </p>
-
-              </div>
-            )}
-
           </div>
-
         </section>
 
         <section className="mt-5">
-
           <h2 className="mb-3 text-base font-bold text-slate-900">
             {t("settings")}
           </h2>
 
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
-
             <button
               type="button"
               onClick={() => navigate("/notifications")}
               className="flex w-full items-center gap-4 border-b border-slate-100 p-4 text-left transition hover:bg-slate-50"
             >
-
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-yellow-50 text-lg">
                 🔔
               </div>
@@ -258,17 +227,14 @@ function Profile() {
               <span className="text-lg text-slate-400">
                 ›
               </span>
-
             </button>
 
             <div className="flex items-center gap-4 p-4">
-
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-lg">
                 🌐
               </div>
 
               <div className="min-w-0 flex-1">
-
                 <p className="text-sm font-semibold text-slate-900">
                   {t("language")}
                 </p>
@@ -278,11 +244,9 @@ function Profile() {
                     ? t("hindi")
                     : t("english")}
                 </p>
-
               </div>
 
               <div className="flex rounded-lg bg-slate-100 p-1">
-
                 <button
                   type="button"
                   onClick={() => changeLanguage("en")}
@@ -306,29 +270,22 @@ function Profile() {
                 >
                   हि
                 </button>
-
               </div>
-
             </div>
-
           </div>
-
         </section>
 
         <section className="mt-5">
-
           <button
             type="button"
             onClick={() => setShowLogoutConfirm(true)}
             className="flex w-full items-center gap-4 rounded-2xl bg-white p-4 text-left shadow-sm transition hover:bg-red-50"
           >
-
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-lg">
               🚪
             </div>
 
             <div className="min-w-0 flex-1">
-
               <p className="text-sm font-semibold text-red-600">
                 {t("logout")}
               </p>
@@ -336,47 +293,17 @@ function Profile() {
               <p className="mt-1 text-xs text-slate-500">
                 {t("logoutDescription")}
               </p>
-
             </div>
 
             <span className="text-lg text-slate-400">
               ›
             </span>
-
           </button>
-
         </section>
-
-        <section className="mt-5 rounded-2xl border border-green-100 bg-green-50 p-4">
-
-          <div className="flex items-start gap-3">
-
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-lg">
-              ℹ️
-            </div>
-
-            <div className="min-w-0">
-
-              <h3 className="text-sm font-semibold text-slate-900">
-                {t("howItWorks")}
-              </h3>
-
-              <p className="mt-1 text-xs leading-5 text-slate-600">
-                {t("bookTrackStayUpdated")}
-              </p>
-
-            </div>
-
-          </div>
-
-        </section>
-
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white">
-
         <div className="mx-auto flex max-w-lg items-center justify-around px-2 py-2">
-
           <button
             type="button"
             onClick={() => navigate("/dashboard")}
@@ -412,16 +339,12 @@ function Profile() {
             <span className="text-xl">👤</span>
             <span className="mt-1">{t("profile")}</span>
           </button>
-
         </div>
-
       </nav>
 
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-2xl">
               🚪
             </div>
@@ -435,7 +358,6 @@ function Profile() {
             </p>
 
             <div className="mt-5 flex gap-3">
-
               <button
                 type="button"
                 onClick={() => setShowLogoutConfirm(false)}
@@ -451,14 +373,10 @@ function Profile() {
               >
                 {t("logout")}
               </button>
-
             </div>
-
           </div>
-
         </div>
       )}
-
     </div>
   );
 }

@@ -11,6 +11,8 @@ import Procurement from "./pages/farmer/Procurement";
 import Payment from "./pages/farmer/Payment";
 import Notifications from "./pages/farmer/Notifications";
 import Profile from "./pages/farmer/Profile";
+import BookingConfirmation from "./pages/farmer/BookingConfirmation";
+
 
 function App() {
   return (
@@ -22,6 +24,10 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/book-slot" element={<BookSlot />} />
+        <Route
+        path="/booking-confirmation"
+        element={<BookingConfirmation />}
+        />
         <Route path="/my-booking" element={<MyBooking />} />
         <Route path="/queue" element={<QueueStatus />} />
         <Route path="/procurement" element={<Procurement />} />

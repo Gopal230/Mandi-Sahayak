@@ -6,6 +6,7 @@ function Registration() {
 
   const [district, setDistrict] = useState("");
   const [village, setVillage] = useState("");
+  const [errors, setErrors] = useState({});
 
   const districts = [
     "Aligarh",
@@ -23,21 +24,126 @@ function Registration() {
     Bulandshahr: ["Sikandrabad", "Khurja", "Anupshahr"],
   };
 
+  const handlePhoneChange = (e) => {
+    const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+    e.target.value = value;
+
+    if (errors.phone) {
+      setErrors((prev) => ({ ...prev, phone: "" }));
+    }
+  };
+
+  const handleAccountNumberChange = (e) => {
+    const value = e.target.value.replace(/\D/g, "").slice(0, 18);
+    e.target.value = value;
+
+    if (errors.accountNumber) {
+      setErrors((prev) => ({ ...prev, accountNumber: "" }));
+    }
+  };
+
+  const handleIfscChange = (e) => {
+    const value = e.target.value
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .toUpperCase()
+      .slice(0, 11);
+
+    e.target.value = value;
+
+    if (errors.ifscCode) {
+      setErrors((prev) => ({ ...prev, ifscCode: "" }));
+    }
+  };
+
+  const validateForm = (formData) => {
+    const newErrors = {};
+
+    const fullName = String(
+      formData.get("fullName") || ""
+    ).trim();
+
+    const phone = String(
+      formData.get("phone") || ""
+    ).trim();
+
+    const accountNumber = String(
+      formData.get("accountNumber") || ""
+    ).trim();
+
+    const ifscCode = String(
+      formData.get("ifscCode") || ""
+    ).trim().toUpperCase();
+
+    if (fullName.length < 2) {
+      newErrors.fullName = "Please enter a valid full name.";
+    }
+
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      newErrors.phone =
+        "Enter a valid 10-digit mobile number.";
+    }
+
+    if (!/^\d{9,18}$/.test(accountNumber)) {
+      newErrors.accountNumber =
+        "Account number must contain 9–18 digits.";
+    }
+
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscCode)) {
+      newErrors.ifscCode =
+        "Enter a valid 11-character IFSC code.";
+    }
+
+    if (!district) {
+      newErrors.district = "Please select your district.";
+    }
+
+    if (!village) {
+      newErrors.village = "Please select your village.";
+    }
+
+    return newErrors;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
     const formData = new FormData(e.target);
+    const newErrors = validateForm(formData);
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    const phone = String(
+      formData.get("phone") || ""
+    ).trim();
 
     const farmerData = {
-      fullName: formData.get("fullName"),
-      phone: formData.get("phone"),
-      district: district,
-      village: village,
-      aadhaarLast4: formData.get("aadhaarLast4"),
-      ifscCode: formData.get("ifscCode"),
+      farmerId: `farmer-${phone}`,
+      fullName: String(
+        formData.get("fullName") || ""
+      ).trim(),
+      phone,
+      district,
+      village,
+      accountNumber: String(
+        formData.get("accountNumber") || ""
+      ).trim(),
+      ifscCode: String(
+        formData.get("ifscCode") || ""
+      ).trim().toUpperCase(),
     };
 
-    localStorage.setItem("farmerData", JSON.stringify(farmerData));
+    localStorage.setItem(
+      "farmerData",
+      JSON.stringify(farmerData)
+    );
+
+    localStorage.setItem(
+      "pendingPhone",
+      phone
+    );
 
     navigate("/verify-otp");
   };
@@ -45,7 +151,6 @@ function Registration() {
   return (
     <div className="min-h-screen bg-green-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6">
-
         <div className="flex justify-center mb-3">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-700 text-2xl shadow-sm">
             🌾
@@ -85,7 +190,6 @@ function Registration() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Full name
@@ -96,8 +200,19 @@ function Registration() {
               name="fullName"
               placeholder="Enter your full name"
               required
-              className="w-full border border-gray-200 rounded-lg p-3 bg-gray-50 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+              autoComplete="name"
+              className={`w-full border rounded-lg p-3 bg-gray-50 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 ${
+                errors.fullName
+                  ? "border-red-400"
+                  : "border-gray-200"
+              }`}
             />
+
+            {errors.fullName && (
+              <p className="text-xs text-red-500 mt-1">
+                {errors.fullName}
+              </p>
+            )}
           </div>
 
           <div>
@@ -115,30 +230,60 @@ function Registration() {
                 name="phone"
                 maxLength="10"
                 required
+                inputMode="numeric"
+                autoComplete="tel"
                 placeholder="Enter 10-digit mobile number"
-                className="flex-1 border border-gray-200 rounded-r-lg p-3 bg-gray-50 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+                onChange={handlePhoneChange}
+                className={`flex-1 border rounded-r-lg p-3 bg-gray-50 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 ${
+                  errors.phone
+                    ? "border-red-400"
+                    : "border-gray-200"
+                }`}
               />
             </div>
 
-            <p className="text-xs text-gray-400 mt-1.5">
-              We'll send an OTP to verify this number.
-            </p>
+            {errors.phone ? (
+              <p className="text-xs text-red-500 mt-1.5">
+                {errors.phone}
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-1.5">
+                We'll send an OTP to verify this number.
+              </p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Aadhaar last 4 digits
+              Bank account number
             </label>
 
             <input
               type="text"
-              name="aadhaarLast4"
-              maxLength="4"
-              inputMode="numeric"
+              name="accountNumber"
               required
-              placeholder="XXXX"
-              className="w-full border border-gray-200 rounded-lg p-3 bg-gray-50 tracking-widest outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+              inputMode="numeric"
+              autoComplete="off"
+              minLength="9"
+              maxLength="18"
+              placeholder="Enter bank account number"
+              onChange={handleAccountNumberChange}
+              className={`w-full border rounded-lg p-3 bg-gray-50 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 ${
+                errors.accountNumber
+                  ? "border-red-400"
+                  : "border-gray-200"
+              }`}
             />
+
+            {errors.accountNumber ? (
+              <p className="text-xs text-red-500 mt-1">
+                {errors.accountNumber}
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-1">
+                Enter your bank account number using digits only.
+              </p>
+            )}
           </div>
 
           <div>
@@ -152,11 +297,22 @@ function Registration() {
               onChange={(e) => {
                 setDistrict(e.target.value);
                 setVillage("");
+                setErrors((prev) => ({
+                  ...prev,
+                  district: "",
+                  village: "",
+                }));
               }}
               required
-              className="w-full border border-gray-200 rounded-lg p-3 bg-gray-50 text-gray-700 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+              className={`w-full border rounded-lg p-3 bg-gray-50 text-gray-700 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 ${
+                errors.district
+                  ? "border-red-400"
+                  : "border-gray-200"
+              }`}
             >
-              <option value="">Select district</option>
+              <option value="">
+                Select district
+              </option>
 
               {districts.map((item) => (
                 <option key={item} value={item}>
@@ -164,6 +320,12 @@ function Registration() {
                 </option>
               ))}
             </select>
+
+            {errors.district && (
+              <p className="text-xs text-red-500 mt-1">
+                {errors.district}
+              </p>
+            )}
           </div>
 
           <div>
@@ -174,17 +336,27 @@ function Registration() {
             <select
               name="village"
               value={village}
-              onChange={(e) => setVillage(e.target.value)}
+              onChange={(e) => {
+                setVillage(e.target.value);
+                setErrors((prev) => ({
+                  ...prev,
+                  village: "",
+                }));
+              }}
               disabled={!district}
               required
-              className={`w-full border border-gray-200 rounded-lg p-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 ${
-                district
-                  ? "bg-gray-50 text-gray-700"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+              className={`w-full border rounded-lg p-3 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 ${
+                errors.village
+                  ? "border-red-400"
+                  : district
+                  ? "bg-gray-50 text-gray-700 border-gray-200"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200"
               }`}
             >
               <option value="">
-                {district ? "Select village" : "Select district first"}
+                {district
+                  ? "Select village"
+                  : "Select district first"}
               </option>
 
               {district &&
@@ -194,6 +366,12 @@ function Registration() {
                   </option>
                 ))}
             </select>
+
+            {errors.village && (
+              <p className="text-xs text-red-500 mt-1">
+                {errors.village}
+              </p>
+            )}
           </div>
 
           <div>
@@ -205,9 +383,27 @@ function Registration() {
               type="text"
               name="ifscCode"
               required
+              minLength="11"
+              maxLength="11"
+              autoComplete="off"
               placeholder="e.g. SBIN0001234"
-              className="w-full border border-gray-200 rounded-lg p-3 bg-gray-50 uppercase outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+              onChange={handleIfscChange}
+              className={`w-full border rounded-lg p-3 bg-gray-50 uppercase outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 ${
+                errors.ifscCode
+                  ? "border-red-400"
+                  : "border-gray-200"
+              }`}
             />
+
+            {errors.ifscCode ? (
+              <p className="text-xs text-red-500 mt-1">
+                {errors.ifscCode}
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-1">
+                Enter your bank's 11-character IFSC code.
+              </p>
+            )}
           </div>
 
           <div className="flex items-start gap-2 pt-1">
@@ -219,7 +415,8 @@ function Registration() {
             />
 
             <p className="text-xs leading-4 text-gray-500">
-              I confirm that the information provided is correct and agree to use the procurement service.
+              I confirm that the information provided is correct
+              and agree to use the procurement service.
             </p>
           </div>
 
@@ -229,7 +426,6 @@ function Registration() {
           >
             Continue to OTP →
           </button>
-
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-5">
@@ -247,7 +443,6 @@ function Registration() {
         <p className="text-center text-xs text-gray-400 mt-5">
           Secure farmer procurement management
         </p>
-
       </div>
     </div>
   );

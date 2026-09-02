@@ -7,17 +7,59 @@ function Payment() {
   const navigate = useNavigate();
 
   const [booking, setBooking] = useState(null);
+  const [rating, setRating] = useState(0);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
-  useEffect(() => {
+  const loadBooking = () => {
     const savedBooking = localStorage.getItem("bookingData");
 
-    if (savedBooking) {
-      try {
-        setBooking(JSON.parse(savedBooking));
-      } catch {
-        setBooking(null);
-      }
+    if (!savedBooking) {
+      setBooking(null);
+      return;
     }
+
+    try {
+      const parsedBooking = JSON.parse(savedBooking);
+      setBooking(parsedBooking);
+
+      const paymentCompleted =
+        parsedBooking?.paymentStatus === "Completed" ||
+        parsedBooking?.paymentStatus === "Paid" ||
+        parsedBooking?.status === "Payment Completed" ||
+        parsedBooking?.status === "Completed";
+
+      if (paymentCompleted) {
+        const feedbackKey = `feedback-${parsedBooking.bookingId}`;
+        const savedFeedback = localStorage.getItem(feedbackKey);
+
+        if (!savedFeedback) {
+          setShowFeedback(true);
+        } else {
+          try {
+            const parsedFeedback = JSON.parse(savedFeedback);
+            setRating(parsedFeedback.rating || 0);
+            setFeedbackSubmitted(true);
+          } catch {
+            setShowFeedback(true);
+          }
+        }
+      }
+    } catch {
+      setBooking(null);
+    }
+  };
+
+  useEffect(() => {
+    loadBooking();
+
+    window.addEventListener("bookingUpdated", loadBooking);
+    window.addEventListener("focus", loadBooking);
+
+    return () => {
+      window.removeEventListener("bookingUpdated", loadBooking);
+      window.removeEventListener("focus", loadBooking);
+    };
   }, []);
 
   const changeLanguage = (language) => {
@@ -40,6 +82,68 @@ function Payment() {
       }
     );
   };
+
+  const getQuantity = () => {
+    if (!booking) return null;
+
+    if (booking.quantityQuintal !== undefined) {
+      return booking.quantityQuintal;
+    }
+
+    if (booking.quantityUnit === "quintal") {
+      return booking.quantity ?? null;
+    }
+
+    return booking.quantity ?? null;
+  };
+
+  const handleSubmitFeedback = () => {
+    if (!booking || rating === 0) return;
+
+    const feedbackData = {
+      feedbackId: `feedback-${booking.bookingId}`,
+      bookingId: booking.bookingId,
+      farmerId: booking.farmerId || "",
+      rating,
+      createdAt: new Date().toISOString(),
+    };
+
+    localStorage.setItem(
+      `feedback-${booking.bookingId}`,
+      JSON.stringify(feedbackData)
+    );
+
+    setFeedbackSubmitted(true);
+    setShowFeedback(false);
+  };
+
+  const handleLater = () => {
+    if (!booking) return;
+
+    localStorage.setItem(
+      `feedback-dismissed-${booking.bookingId}`,
+      "true"
+    );
+
+    setShowFeedback(false);
+  };
+
+  const handleCloseFeedback = () => {
+    if (!booking) return;
+
+    localStorage.setItem(
+      `feedback-dismissed-${booking.bookingId}`,
+      "true"
+    );
+
+    setShowFeedback(false);
+  };
+
+  const paymentCompleted =
+    booking?.paymentStatus === "Completed" ||
+    booking?.paymentStatus === "Paid" ||
+    booking?.status === "Payment Completed" ||
+    booking?.status === "Completed";
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-slate-50">
@@ -122,10 +226,22 @@ function Payment() {
           </section>
         ) : (
           <div className="space-y-4">
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <section
+              className={`rounded-2xl border bg-white p-5 shadow-sm ${
+                paymentCompleted
+                  ? "border-green-200"
+                  : "border-slate-200"
+              }`}
+            >
               <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-50 text-xl">
-                  ₹
+                <div
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl ${
+                    paymentCompleted
+                      ? "bg-green-100 text-green-700"
+                      : "bg-green-50 text-green-700"
+                  }`}
+                >
+                  {paymentCompleted ? "✓" : "₹"}
                 </div>
 
                 <div className="min-w-0">
@@ -134,11 +250,15 @@ function Payment() {
                   </p>
 
                   <h2 className="mt-1 text-lg font-bold text-slate-900">
-                    {t("paymentPending")}
+                    {paymentCompleted
+                      ? t("paymentCompleted")
+                      : t("paymentPending")}
                   </h2>
 
                   <p className="mt-1 text-sm leading-5 text-slate-500">
-                    {t("paymentWillAppear")}
+                    {paymentCompleted
+                      ? t("paymentCompletedDescription")
+                      : t("paymentWillAppear")}
                   </p>
                 </div>
               </div>
@@ -178,8 +298,8 @@ function Payment() {
                   </span>
 
                   <span className="text-right text-sm font-medium text-slate-900">
-                    {booking.quantity
-                      ? `${booking.quantity} ${t("kg")}`
+                    {getQuantity() !== null
+                      ? `${getQuantity()} ${t("quintal")}`
                       : "—"}
                   </span>
                 </div>
@@ -218,7 +338,10 @@ function Payment() {
                   </span>
 
                   <span className="text-sm font-semibold text-slate-400">
-                    {t("notAvailable")}
+                    {booking.paymentAmount !== undefined &&
+                    booking.paymentAmount !== null
+                      ? `₹${booking.paymentAmount}`
+                      : t("notAvailable")}
                   </span>
                 </div>
 
@@ -227,16 +350,57 @@ function Payment() {
                     {t("paymentStatusLabel")}
                   </span>
 
-                  <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                    {t("pending")}
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      paymentCompleted
+                        ? "bg-green-50 text-green-700"
+                        : "bg-amber-50 text-amber-700"
+                    }`}
+                  >
+                    {paymentCompleted
+                      ? t("completed")
+                      : t("pending")}
                   </span>
                 </div>
+
+                {booking.transactionId && (
+                  <div className="mt-3 flex items-center justify-between gap-4">
+                    <span className="text-sm text-slate-500">
+                      {t("transactionId")}
+                    </span>
+
+                    <span className="max-w-[55%] break-all text-right text-xs font-medium text-slate-700">
+                      {booking.transactionId}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <p className="mt-3 text-xs leading-5 text-slate-400">
-                {t("paymentBackendMessage")}
+                {paymentCompleted
+                  ? t("paymentSuccessBackendMessage")
+                  : t("paymentBackendMessage")}
               </p>
             </section>
+
+            {feedbackSubmitted && (
+              <section className="rounded-2xl border border-green-100 bg-green-50 p-5 text-center">
+                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-white text-xl text-green-700 shadow-sm">
+                  ✓
+                </div>
+
+                <h2 className="mt-3 text-base font-bold text-slate-900">
+                  {t("feedbackThanks")}
+                </h2>
+
+                <div className="mt-2 text-lg tracking-widest text-amber-500">
+                  {"★".repeat(rating)}
+                  <span className="text-slate-200">
+                    {"★".repeat(5 - rating)}
+                  </span>
+                </div>
+              </section>
+            )}
 
             <button
               type="button"
@@ -248,6 +412,78 @@ function Payment() {
           </div>
         )}
       </main>
+
+      {showFeedback && paymentCompleted && !feedbackSubmitted && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
+          <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+            <button
+              type="button"
+              onClick={handleCloseFeedback}
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-lg text-slate-500 hover:bg-slate-200"
+              aria-label="Close"
+            >
+              ×
+            </button>
+
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-2xl text-green-700">
+              ✓
+            </div>
+
+            <h2 className="mt-4 text-center text-xl font-bold text-slate-900">
+              {t("rateYourExperience")}
+            </h2>
+
+            <p className="mt-2 text-center text-sm leading-5 text-slate-500">
+              {t("rateExperienceDescription")}
+            </p>
+
+            <div className="mt-6 flex justify-center gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setRating(star)}
+                  className={`flex h-11 w-11 items-center justify-center rounded-xl text-3xl transition ${
+                    star <= rating
+                      ? "text-amber-400"
+                      : "text-slate-200"
+                  }`}
+                  aria-label={`${star} stars`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+
+            <p className="mt-3 text-center text-xs font-medium text-slate-400">
+              {rating > 0
+                ? `${rating}/5`
+                : t("selectRating")}
+            </p>
+
+            <button
+              type="button"
+              onClick={handleSubmitFeedback}
+              disabled={rating === 0}
+              className={`mt-6 w-full rounded-xl px-4 py-3 text-sm font-semibold text-white transition ${
+                rating > 0
+                  ? "bg-green-700 hover:bg-green-800"
+                  : "cursor-not-allowed bg-slate-300"
+              }`}
+            >
+              {t("submitFeedback")}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleLater}
+              className="mt-2 w-full rounded-xl px-4 py-3 text-sm font-semibold text-slate-500 hover:bg-slate-50"
+            >
+              {t("maybeLater")}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

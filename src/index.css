@@ -1,1 +1,39 @@
 @import "tailwindcss";
+@keyframes successCirclePop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes successCheckDraw {
+  0% {
+    stroke-dasharray: 0 100;
+    opacity: 0;
+  }
+
+  100% {
+    stroke-dasharray: 100 100;
+    opacity: 1;
+  }
+}
+
+.success-circle {
+  animation: successCirclePop 0.45s ease-out forwards;
+}
+
+.success-check {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+  animation: successCheckDraw 0.45s ease-out 0.25s forwards;
+}
