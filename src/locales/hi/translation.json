@@ -156,5 +156,14 @@
   "selectRating": "रेटिंग चुनें",
   "submitFeedback": "फीडबैक भेजें",
   "maybeLater": "बाद में",
-  "feedbackThanks": "आपके फीडबैक के लिए धन्यवाद!"
+  "feedbackThanks": "आपके फीडबैक के लिए धन्यवाद!",
+  "centreCapacity": "केंद्र की क्षमता",
+  "availableCapacity": "उपलब्ध क्षमता",
+  "yourQuantity": "आपकी मात्रा",
+  "capacityAvailable": "क्षमता उपलब्ध है",
+  "capacityInsufficient": "पर्याप्त क्षमता नहीं है",
+  "capacityUpdating": "क्षमता की जानकारी अपडेट की जा रही है।",
+  "capacityAvailableMessage": "केंद्र आपकी बुक की गई मात्रा स्वीकार कर सकता है।",
+  "capacityInsufficientMessage": "केंद्र अभी आपकी पूरी बुक की गई मात्रा स्वीकार नहीं कर सकता।",
+  "capacityBackendMessage": "क्षमता की जानकारी खरीद प्रणाली द्वारा उपलब्ध कराई जाती है।"
 }

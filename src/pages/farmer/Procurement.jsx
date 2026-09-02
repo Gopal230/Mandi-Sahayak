@@ -9,15 +9,29 @@ function Procurement() {
   const [booking, setBooking] = useState(null);
 
   useEffect(() => {
-    const savedBooking = localStorage.getItem("bookingData");
+    const loadBooking = () => {
+      const savedBooking = localStorage.getItem("bookingData");
 
-    if (savedBooking) {
-      try {
-        setBooking(JSON.parse(savedBooking));
-      } catch {
+      if (savedBooking) {
+        try {
+          setBooking(JSON.parse(savedBooking));
+        } catch {
+          setBooking(null);
+        }
+      } else {
         setBooking(null);
       }
-    }
+    };
+
+    loadBooking();
+
+    window.addEventListener("bookingUpdated", loadBooking);
+    window.addEventListener("focus", loadBooking);
+
+    return () => {
+      window.removeEventListener("bookingUpdated", loadBooking);
+      window.removeEventListener("focus", loadBooking);
+    };
   }, []);
 
   const changeLanguage = (language) => {
@@ -40,6 +54,44 @@ function Procurement() {
       }
     );
   };
+
+  const getQuantityQuintal = () => {
+    if (booking?.quantityQuintal !== undefined) {
+      return Number(booking.quantityQuintal);
+    }
+
+    if (booking?.quantityUnit === "quintal" && booking?.quantity !== undefined) {
+      return Number(booking.quantity);
+    }
+
+    return null;
+  };
+
+  const getAvailableCapacity = () => {
+    if (booking?.availableCapacityQuintal !== undefined) {
+      return Number(booking.availableCapacityQuintal);
+    }
+
+    if (booking?.availableCapacity !== undefined) {
+      return Number(booking.availableCapacity);
+    }
+
+    return null;
+  };
+
+  const farmerQuantity = getQuantityQuintal();
+  const availableCapacity = getAvailableCapacity();
+
+  const hasCapacityData =
+    availableCapacity !== null && Number.isFinite(availableCapacity);
+
+  const hasQuantityData =
+    farmerQuantity !== null && Number.isFinite(farmerQuantity);
+
+  const capacityIsSufficient =
+    hasCapacityData &&
+    hasQuantityData &&
+    availableCapacity >= farmerQuantity;
 
   if (!booking) {
     return (
@@ -191,8 +243,8 @@ function Procurement() {
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  {booking.quantity
-                    ? `${booking.quantity} ${t("kg")}`
+                  {hasQuantityData
+                    ? `${farmerQuantity} ${t("quintal")}`
                     : "—"}
                 </p>
               </div>
@@ -237,6 +289,106 @@ function Procurement() {
             </div>
           </section>
 
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                  {t("centreCapacity")}
+                </p>
+
+                <h2 className="mt-1 text-lg font-bold text-slate-900">
+                  {booking.crop || "—"}
+                </h2>
+              </div>
+
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                  hasCapacityData
+                    ? capacityIsSufficient
+                      ? "bg-green-50"
+                      : "bg-amber-50"
+                    : "bg-slate-50"
+                }`}
+              >
+                <span className="text-lg">
+                  {hasCapacityData
+                    ? capacityIsSufficient
+                      ? "✓"
+                      : "!"
+                    : "…"}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-slate-50 p-4">
+                <p className="text-xs text-slate-500">
+                  {t("availableCapacity")}
+                </p>
+
+                <p className="mt-1 text-lg font-bold text-slate-900">
+                  {hasCapacityData
+                    ? `${availableCapacity} ${t("quintal")}`
+                    : "—"}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-slate-50 p-4">
+                <p className="text-xs text-slate-500">
+                  {t("yourQuantity")}
+                </p>
+
+                <p className="mt-1 text-lg font-bold text-slate-900">
+                  {hasQuantityData
+                    ? `${farmerQuantity} ${t("quintal")}`
+                    : "—"}
+                </p>
+              </div>
+            </div>
+
+            <div
+              className={`mt-4 rounded-xl p-4 ${
+                !hasCapacityData
+                  ? "bg-slate-50"
+                  : capacityIsSufficient
+                    ? "bg-green-50"
+                    : "bg-amber-50"
+              }`}
+            >
+              <p
+                className={`text-sm font-semibold ${
+                  !hasCapacityData
+                    ? "text-slate-700"
+                    : capacityIsSufficient
+                      ? "text-green-800"
+                      : "text-amber-800"
+                }`}
+              >
+                {!hasCapacityData
+                  ? t("capacityUpdating")
+                  : capacityIsSufficient
+                    ? t("capacityAvailable")
+                    : t("capacityInsufficient")}
+              </p>
+
+              <p
+                className={`mt-1 text-sm leading-5 ${
+                  !hasCapacityData
+                    ? "text-slate-500"
+                    : capacityIsSufficient
+                      ? "text-green-700"
+                      : "text-amber-700"
+                }`}
+              >
+                {!hasCapacityData
+                  ? t("capacityBackendMessage")
+                  : capacityIsSufficient
+                    ? t("capacityAvailableMessage")
+                    : t("capacityInsufficientMessage")}
+              </p>
+            </div>
+          </section>
+
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-100 px-5 py-4">
               <h2 className="font-semibold text-slate-900">
@@ -271,8 +423,8 @@ function Procurement() {
                 </span>
 
                 <span className="text-right text-sm font-medium text-slate-900">
-                  {booking.quantity
-                    ? `${booking.quantity} ${t("kg")}`
+                  {hasQuantityData
+                    ? `${farmerQuantity} ${t("quintal")}`
                     : "—"}
                 </span>
               </div>

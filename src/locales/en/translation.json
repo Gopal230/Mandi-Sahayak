@@ -156,5 +156,14 @@
   "selectRating": "Select a rating",
   "submitFeedback": "Submit Feedback",
   "maybeLater": "Maybe Later",
-  "feedbackThanks": "Thank you for your feedback!"
+  "feedbackThanks": "Thank you for your feedback!",
+  "centreCapacity": "Centre Capacity",
+  "availableCapacity": "Available Capacity",
+  "yourQuantity": "Your Quantity",
+  "capacityAvailable": "Capacity Available",
+  "capacityInsufficient": "Capacity Insufficient",
+  "capacityUpdating": "Capacity information is being updated.",
+  "capacityAvailableMessage": "The centre can accept your booked quantity.",
+  "capacityInsufficientMessage": "The centre cannot currently accept your full booked quantity.",
+  "capacityBackendMessage": "Capacity information is provided by the procurement system."
 }
