@@ -1,10 +1,13 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Navbar } from "./components/Navbar";
 import { useFaramqueueState } from "./hooks/useFaramqueueState";
+import MorningSetupPage from "./pages/MorningSetupPage";
 import QueuePage from "./pages/queue";
+import ReportsPage from "./pages/ReportsPage";
 import StoragePage from "./pages/StoragePage";
 import PaymentsPage from "./pages/PaymentsPage";
-import ReportsPage from "./pages/ReportsPage";
+import WeighmentPage from "./pages/WeighmentPage";
+import GateEntryPage from "./pages/GateEntryPage";
 
 const App = () => {
   const {
@@ -15,6 +18,9 @@ const App = () => {
     selectedDate,
     selectedDateEntries,
     selectedReportFarmerId,
+    morningSetup,
+    setMorningSetup,
+    slotOptions,
     addFarmer,
     clearFarmer,
     saveFarmerReport,
@@ -22,39 +28,42 @@ const App = () => {
     handlePaymentStatusChange,
     updateFarmer,
     verifyFarmer,
+    markFarmerArrived,
     updateCropStorage,
   } = useFaramqueueState();
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,_#fdf6eb,_#f1d4a2_28%,_#dba86e_100%)] p-3 text-[#2f241d] sm:p-4 lg:p-6">
-      <div className="mx-auto max-w-7xl min-w-0">
-        <Navbar />
+    <div className="min-h-screen overflow-x-hidden bg-[#f3f5f3] p-0 text-slate-900">
+      <div className="mx-auto max-w-[1280px] min-w-0">
+        <div className="bg-[#11a255] px-4 py-4 text-white sm:px-6">
+          <Navbar />
+        </div>
 
         {paymentAlert && (
           <div
             className={[
-              "mt-4 rounded-2xl border px-4 py-3 text-sm font-semibold shadow-sm",
+              "mx-4 mt-4 rounded-2xl border px-4 py-3 text-sm font-semibold shadow-sm sm:mx-6",
               paymentAlert.tone === "success"
-                ? "border-[#b8d7b2] bg-[#edf8ee] text-[#265b3d]"
-                : "border-[#e6b7a5] bg-[#fef0eb] text-[#8a3d2f]",
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-red-200 bg-red-50 text-red-700",
             ].join(" ")}
           >
             {paymentAlert.message}
           </div>
         )}
 
-        <div className="mt-4 grid min-w-0 gap-4 lg:mt-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-5">
-          <aside className="rounded-[28px] border border-[#d9b37c] bg-[#f7e8cf]/90 p-3 shadow-[0_18px_40px_rgba(121,79,45,0.12)] backdrop-blur-sm sm:p-4">
+        <div className="mt-4 grid min-w-0 gap-4 px-4 pb-6 lg:mt-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-5 lg:px-6">
+          <aside className="rounded-[28px] border border-emerald-200 bg-white/90 p-3 shadow-[0_8px_24px_rgba(16,64,42,0.08)] sm:p-4">
             <div className="grid grid-cols-2 gap-3 lg:block lg:space-y-3">
               {queueStats.map((stat) => (
                 <div
                   key={stat.label}
-                  className={`rounded-2xl border border-[#e4c999] ${stat.tone} p-4`}
+                  className={`rounded-2xl border border-emerald-100 ${stat.tone} p-4`}
                 >
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#71523a]">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-800/80">
                     {stat.label}
                   </p>
-                  <p className="mt-2 text-3xl font-black text-[#37281d]">
+                  <p className="mt-2 text-3xl font-black text-slate-900">
                     {stat.value}
                   </p>
                 </div>
@@ -62,20 +71,59 @@ const App = () => {
             </div>
           </aside>
 
-          <main className="min-w-0 rounded-[30px] border border-[#d9b37c] bg-[#fffaf2]/90 p-3 shadow-[0_18px_40px_rgba(121,79,45,0.12)] backdrop-blur-sm sm:p-4 lg:p-6">
+          <main className="min-w-0 rounded-[30px] border border-[#e7e7e7] bg-[#fafafa] p-3 shadow-[0_8px_18px_rgba(15,25,20,0.04)] sm:p-4 lg:p-6">
             <Routes>
-              <Route path="/" element={<Navigate to="/queue" replace />} />
+              <Route path="/" element={<Navigate to="/setup" replace />} />
+              <Route
+                path="/setup"
+                element={
+                  <MorningSetupPage
+                    farmers={farmers}
+                    morningSetup={morningSetup}
+                    storage={storage}
+                    selectedDate={selectedDate}
+                    onSaveMorningSetup={setMorningSetup}
+                    onUpdateCropStorage={updateCropStorage}
+                  />
+                }
+              />
+              <Route
+                path="/farmers"
+                element={
+                  <GateEntryPage
+                    farmers={farmers}
+                    onVerifyFarmer={verifyFarmer}
+                    onMarkArrived={markFarmerArrived}
+                  />
+                }
+              />
+              <Route
+                path="/gate-entry"
+                element={<Navigate to="/farmers" replace />}
+              />
               <Route
                 path="/queue"
                 element={
                   <QueuePage
                     farmers={farmers}
                     selectedDate={selectedDate}
+                    morningSetup={morningSetup}
+                    slotOptions={slotOptions}
                     onDateChange={handleDateChange}
                     onAddFarmer={addFarmer}
                     onUpdateFarmer={updateFarmer}
                     onVerifyFarmer={verifyFarmer}
                     onClearFarmer={clearFarmer}
+                  />
+                }
+              />
+              <Route
+                path="/weighment"
+                element={
+                  <WeighmentPage
+                    farmers={farmers}
+                    onUpdateFarmer={updateFarmer}
+                    onSaveReport={saveFarmerReport}
                   />
                 }
               />

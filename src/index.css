@@ -4,8 +4,8 @@
   font-family: Inter, "Segoe UI", sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #2f241d;
-  background: #f1d4a2;
+  color: #1b1a18;
+  background: #f3f5f3;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -18,12 +18,14 @@
 
 html {
   scroll-behavior: smooth;
+  background: #f3f5f3;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: #f3f5f3;
 }
 
 button {
@@ -32,4 +34,5 @@ button {
 
 #root {
   min-height: 100vh;
+  background: transparent;
 }

@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const ReportsPage = ({
   farmers = [],
   selectedDate,
   selectedFarmerId = null,
-  onUpdateFarmer,
-  onSaveReport,
 }) => {
   const clearedFarmers = useMemo(
     () =>
@@ -45,7 +44,6 @@ const ReportsPage = ({
     slot: "",
     actualWeight: "",
     money: "",
-    lateMinutes: "",
     paymentStatus: "Pending",
   });
 
@@ -60,25 +58,65 @@ const ReportsPage = ({
       slot: selectedFarmer.slot ?? "",
       actualWeight: selectedFarmer.actualWeight ?? "",
       money: selectedFarmer.paidAmount ?? "",
-      lateMinutes: selectedFarmer.lateMinutes ?? "",
       paymentStatus: selectedFarmer.paymentStatus ?? "Pending",
     });
   }, [selectedFarmer]);
 
-  const handleFieldChange = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
+  const navigate = useNavigate();
+  const [savedSummary, setSavedSummary] = useState(null);
 
-  const handleSaveReport = () => {
-    if (!selectedFarmer || !onSaveReport) return;
+  useEffect(() => {
+    if (!selectedFarmer || selectedFarmerId == null) return;
 
-    onSaveReport(selectedFarmer.id, {
-      actualWeight: form.actualWeight,
-      money: form.money,
-      lateMinutes: form.lateMinutes,
-      paymentStatus: form.paymentStatus,
+    if (
+      selectedFarmer.status === "Cleared" ||
+      selectedFarmer.paymentStatus === "Cleared"
+    ) {
+      setSavedSummary({
+        name: selectedFarmer.name,
+        token: selectedFarmer.token,
+        crop: selectedFarmer.crop,
+        actualWeight:
+          selectedFarmer.actualWeight || selectedFarmer.quantity || "0",
+        money: selectedFarmer.paidAmount || "0",
+        paymentStatus: selectedFarmer.paymentStatus || "Cleared",
+      });
+    }
+  }, [selectedFarmer, selectedFarmerId]);
+
+  const cropTotals = useMemo(() => {
+    const summary = {};
+
+    clearedFarmers.forEach((farmer) => {
+      const cropName = farmer.crop || "Other";
+      const quantity = Number(farmer.actualWeight || farmer.quantity || 0);
+      const amount = Number(farmer.paidAmount || 0);
+
+      if (!summary[cropName]) {
+        summary[cropName] = {
+          crop: cropName,
+          totalQuantity: 0,
+          totalAmount: 0,
+          farmers: 0,
+        };
+      }
+
+      summary[cropName].totalQuantity += quantity;
+      summary[cropName].totalAmount += amount;
+      summary[cropName].farmers += 1;
     });
-  };
+
+    return Object.values(summary).sort((a, b) => b.totalAmount - a.totalAmount);
+  }, [clearedFarmers]);
+
+  const totalQuantity = cropTotals.reduce(
+    (sum, crop) => sum + Number(crop.totalQuantity || 0),
+    0,
+  );
+  const totalAmount = cropTotals.reduce(
+    (sum, crop) => sum + Number(crop.totalAmount || 0),
+    0,
+  );
 
   const reports = [
     {
@@ -93,215 +131,311 @@ const ReportsPage = ({
     },
     {
       title: "Net due",
-      value: `₹${clearedFarmers
-        .reduce((sum, farmer) => sum + Number(farmer.paidAmount || 0), 0)
-        .toLocaleString("en-IN")}`,
+      value: `₹${totalAmount.toLocaleString("en-IN")}`,
       detail: "Payments entered today",
     },
   ];
 
   return (
-    <div className="space-y-5 rounded-3xl border border-[#e7d0a7] bg-[#fffaf2] p-4 shadow-sm shadow-[#d3b07a]/30 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#7a5640]">
-            Cleared slot
-          </p>
-          <h2 className="text-xl font-bold text-[#3b291e] sm:text-2xl">
-            Operational reports
-          </h2>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#7a5640]">
-            {selectedDate ?? "Today"}
-          </p>
-        </div>
-        <button className="rounded-full border border-[#d9b37c] bg-[#f4dab8] px-4 py-2 text-sm font-semibold text-[#3d281b] hover:bg-[#efcd9d]">
-          Export PDF
-        </button>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        {reports.map((report) => (
-          <div
-            key={report.title}
-            className="rounded-2xl border border-[#ecd5a7] bg-[#f6e4c8] p-5"
-          >
-            <p className="text-sm font-medium text-[#7a5640]">{report.title}</p>
-            <h3 className="mt-2 text-3xl font-black text-[#3d281b]">
-              {report.value}
-            </h3>
-            <p className="mt-2 text-sm text-[#6d4d38]">{report.detail}</p>
-          </div>
-        ))}
-      </div>
-
-      {clearedFarmers.length > 0 && (
-        <div className="rounded-[22px] border border-[#e7cf9f] bg-[#fffaf2] p-4 shadow-sm shadow-[#d2b17a]/30">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#7a5640]">
-            Cleared records
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {clearedFarmers.map((farmer) => {
-              const isSelected = selectedFarmer?.id === farmer.id;
-
-              return (
-                <button
-                  key={farmer.id}
-                  type="button"
-                  onClick={() => setActiveFarmerId(farmer.id)}
-                  className={[
-                    "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                    isSelected
-                      ? "border-[#9e5e36] bg-[#9e5e36] text-white"
-                      : "border-[#dcc299] bg-[#f7e9d0] text-[#5a3c2d] hover:bg-[#f2d7a2]",
-                  ].join(" ")}
-                >
-                  {farmer.name} • {farmer.slot}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {selectedFarmer ? (
-        <div className="rounded-[26px] border border-[#e7cf9f] bg-[#fffaf2] p-4 shadow-sm shadow-[#d2b17a]/30">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7a5640]">
-                Active entry
-              </p>
-              <h3 className="text-xl font-black text-[#3d281b]">
-                {selectedFarmer.name}
-              </h3>
+    <>
+      {savedSummary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4">
+          <div className="w-full max-w-md rounded-[28px] border border-emerald-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.2)]">
+            <div className="flex items-center justify-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-700">
+                ✓
+              </div>
             </div>
-          </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#71523a]">
-              Farmer name
-              <input
-                value={form.name}
-                readOnly
-                className="mt-1 w-full rounded-xl border border-[#d8b57d] bg-[#f7efe5] px-2 py-2 text-sm font-medium text-[#3d281b]"
-              />
-            </label>
+            <h3 className="mt-4 text-center text-2xl font-black text-slate-900">
+              Report saved
+            </h3>
 
-            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#71523a]">
-              Token
-              <input
-                value={form.token}
-                readOnly
-                className="mt-1 w-full rounded-xl border border-[#d8b57d] bg-[#f7efe5] px-2 py-2 text-sm font-medium text-[#3d281b]"
-              />
-            </label>
+            <div className="mt-4 space-y-2 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-slate-700">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold">Farmer</span>
+                <span className="text-right font-bold text-slate-900">
+                  {savedSummary.name}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold">Token</span>
+                <span className="text-right font-bold text-slate-900">
+                  {savedSummary.token}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold">Crop</span>
+                <span className="text-right font-bold text-slate-900">
+                  {savedSummary.crop}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold">Actual weight</span>
+                <span className="text-right font-bold text-slate-900">
+                  {savedSummary.actualWeight} kg
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold">Amount</span>
+                <span className="text-right font-bold text-slate-900">
+                  ₹{Number(savedSummary.money || 0).toLocaleString("en-IN")}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold">Status</span>
+                <span className="text-right font-bold text-emerald-700">
+                  {savedSummary.paymentStatus}
+                </span>
+              </div>
+            </div>
 
-            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#71523a]">
-              Crop
-              <input
-                value={form.crop}
-                readOnly
-                className="mt-1 w-full rounded-xl border border-[#d8b57d] bg-[#f7efe5] px-2 py-2 text-sm font-medium text-[#3d281b]"
-              />
-            </label>
-
-            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#71523a]">
-              Qty (kg)
-              <input
-                value={form.quantity}
-                readOnly
-                className="mt-1 w-full rounded-xl border border-[#d8b57d] bg-[#f7efe5] px-2 py-2 text-sm font-medium text-[#3d281b]"
-              />
-            </label>
-
-            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#71523a]">
-              Slot time
-              <input
-                value={form.slot}
-                readOnly
-                className="mt-1 w-full rounded-xl border border-[#d8b57d] bg-[#f7efe5] px-2 py-2 text-sm font-medium text-[#3d281b]"
-              />
-            </label>
-
-            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#71523a]">
-              Date
-              <input
-                value={selectedFarmer.date ?? selectedDate ?? ""}
-                readOnly
-                className="mt-1 w-full rounded-xl border border-[#d8b57d] bg-[#f7efe5] px-2 py-2 text-sm font-medium text-[#3d281b]"
-              />
-            </label>
-
-            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#71523a]">
-              Actual weight (kg)
-              <input
-                type="number"
-                value={form.actualWeight}
-                onChange={(event) =>
-                  handleFieldChange("actualWeight", event.target.value)
-                }
-                placeholder="Enter actual weight"
-                className="mt-1 w-full rounded-xl border border-[#d8b57d] bg-[#fffaf3] px-2 py-2 text-sm font-medium text-[#3d281b]"
-              />
-            </label>
-
-            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#71523a]">
-              Money (₹)
-              <input
-                type="number"
-                value={form.money}
-                onChange={(event) =>
-                  handleFieldChange("money", event.target.value)
-                }
-                placeholder="Enter amount"
-                className="mt-1 w-full rounded-xl border border-[#d8b57d] bg-[#fffaf3] px-2 py-2 text-sm font-medium text-[#3d281b]"
-              />
-            </label>
-
-            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#71523a]">
-              Time late (min)
-              <input
-                type="number"
-                value={form.lateMinutes}
-                onChange={(event) =>
-                  handleFieldChange("lateMinutes", event.target.value)
-                }
-                placeholder="Minutes late"
-                className="mt-1 w-full rounded-xl border border-[#d8b57d] bg-[#fffaf3] px-2 py-2 text-sm font-medium text-[#3d281b]"
-              />
-            </label>
-
-            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#71523a]">
-              Payment status
-              <select
-                value={form.paymentStatus}
-                disabled={selectedFarmer.paymentStatus === "Cleared"}
-                onChange={(event) =>
-                  handleFieldChange("paymentStatus", event.target.value)
-                }
-                className="mt-1 w-full rounded-xl border border-[#d8b57d] bg-[#fffaf3] px-2 py-2 text-sm font-medium text-[#3d281b] disabled:cursor-not-allowed disabled:opacity-70"
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                aria-label="Close report summary"
+                onClick={() => setSavedSummary(null)}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-xl font-bold text-emerald-800 hover:bg-emerald-100"
               >
-                <option value="Pending">Pending</option>
-                <option value="Cleared">Cleared</option>
-              </select>
-            </label>
-          </div>
+                ×
+              </button>
+            </div>
 
-          <div className="mt-5 flex justify-end">
             <button
               type="button"
-              onClick={handleSaveReport}
-              className="rounded-full bg-[#9e5e36] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8c502a]"
+              onClick={() => {
+                setSavedSummary(null);
+                navigate("/reports");
+              }}
+              className="mt-3 w-full rounded-full bg-green-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-800"
             >
-              Save report
+              OK
             </button>
           </div>
         </div>
-      ) : (
-        <div className="rounded-[26px] border border-[#ead4a7] bg-[#f5ebd7] p-5 text-[#5c402f]">
-          No cleared slots yet for today.
-        </div>
       )}
-    </div>
+
+      <div className="space-y-5 rounded-3xl border border-emerald-200 bg-white p-4 shadow-sm shadow-emerald-200/30 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
+              Cleared slot
+            </p>
+            <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
+              Operational reports
+            </h2>
+            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+              {selectedDate ?? "Today"}
+            </p>
+          </div>
+          <button className="rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100">
+            Export PDF
+          </button>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          {reports.map((report) => (
+            <div
+              key={report.title}
+              className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"
+            >
+              <p className="text-sm font-medium text-emerald-800">
+                {report.title}
+              </p>
+              <h3 className="mt-2 text-3xl font-black text-slate-900">
+                {report.value}
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">{report.detail}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-[26px] border border-emerald-200 bg-white p-4 shadow-sm shadow-emerald-200/30">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="text-xl font-black text-slate-900">
+              Today’s report
+            </h3>
+            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-emerald-800">
+              {totalQuantity} kg total
+            </span>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-emerald-200">
+            <table className="min-w-full divide-y divide-emerald-200 text-left text-sm">
+              <thead className="bg-emerald-50 text-emerald-900">
+                <tr>
+                  <th className="px-3 py-2 font-bold">Crop</th>
+                  <th className="px-3 py-2 font-bold">Farmers</th>
+                  <th className="px-3 py-2 font-bold">Qty bought</th>
+                  <th className="px-3 py-2 font-bold">Amount paid</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-emerald-100 bg-white">
+                {cropTotals.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="px-3 py-4 text-slate-600">
+                      No cleared records yet.
+                    </td>
+                  </tr>
+                ) : (
+                  cropTotals.map((crop) => (
+                    <tr key={crop.crop}>
+                      <td className="px-3 py-2 font-semibold text-slate-800">
+                        {crop.crop}
+                      </td>
+                      <td className="px-3 py-2 text-slate-700">
+                        {crop.farmers}
+                      </td>
+                      <td className="px-3 py-2 text-slate-700">
+                        {Number(crop.totalQuantity || 0).toLocaleString(
+                          "en-IN",
+                        )}{" "}
+                        kg
+                      </td>
+                      <td className="px-3 py-2 font-semibold text-slate-900">
+                        ₹{Number(crop.totalAmount || 0).toLocaleString("en-IN")}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {clearedFarmers.length > 0 && (
+          <div className="rounded-[22px] border border-emerald-200 bg-emerald-50 p-4 shadow-sm shadow-emerald-200/30">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+              Cleared records
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {clearedFarmers.map((farmer) => {
+                const isSelected = selectedFarmer?.id === farmer.id;
+
+                return (
+                  <button
+                    key={farmer.id}
+                    type="button"
+                    onClick={() => setActiveFarmerId(farmer.id)}
+                    className={[
+                      "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                      isSelected
+                        ? "border-green-700 bg-green-700 text-white"
+                        : "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100",
+                    ].join(" ")}
+                  >
+                    {farmer.token} • {farmer.slot}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {selectedFarmer ? (
+          <div className="rounded-[26px] border border-emerald-200 bg-white p-4 shadow-sm shadow-emerald-200/30">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                  Active entry
+                </p>
+                <h3 className="text-xl font-black text-slate-900">
+                  {selectedFarmer.token}
+                </h3>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
+                Farmer name
+                <input
+                  value={form.name}
+                  readOnly
+                  className="mt-1 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm font-medium text-slate-900"
+                />
+              </label>
+
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
+                Token
+                <input
+                  value={form.token}
+                  readOnly
+                  className="mt-1 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm font-medium text-slate-900"
+                />
+              </label>
+
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
+                Crop
+                <input
+                  value={form.crop}
+                  readOnly
+                  className="mt-1 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm font-medium text-slate-900"
+                />
+              </label>
+
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
+                Qty (kg)
+                <input
+                  value={form.quantity}
+                  readOnly
+                  className="mt-1 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm font-medium text-slate-900"
+                />
+              </label>
+
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
+                Slot time
+                <input
+                  value={form.slot}
+                  readOnly
+                  className="mt-1 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm font-medium text-slate-900"
+                />
+              </label>
+
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
+                Date
+                <input
+                  value={selectedFarmer.date ?? selectedDate ?? ""}
+                  readOnly
+                  className="mt-1 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm font-medium text-slate-900"
+                />
+              </label>
+
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
+                Actual weight (kg)
+                <input
+                  value={form.actualWeight}
+                  readOnly
+                  className="mt-1 w-full cursor-default rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm font-medium text-slate-900"
+                />
+              </label>
+
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
+                Money (₹)
+                <input
+                  value={form.money}
+                  readOnly
+                  className="mt-1 w-full cursor-default rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm font-medium text-slate-900"
+                />
+              </label>
+
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
+                Payment status
+                <input
+                  value={form.paymentStatus}
+                  readOnly
+                  className="mt-1 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm font-medium text-slate-900"
+                />
+              </label>
+            </div>
+
+          </div>
+        ) : (
+          <div className="rounded-[26px] border border-emerald-200 bg-emerald-50 p-5 text-slate-700">
+            No cleared slots yet for today.
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 

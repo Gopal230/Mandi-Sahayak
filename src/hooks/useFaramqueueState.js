@@ -5,66 +5,119 @@ const getDateValue = (date = new Date()) =>
     .toISOString()
     .slice(0, 10);
 
+const getEarliestActiveDate = () => getDateValue();
+
 const createQueueForDate = (date) => [];
+
+const defaultMspRates = {
+  Wheat: 2275,
+  Rice: 2225,
+  Mustard: 5650,
+  Gram: 5230,
+};
+
+const createMorningSetup = () => ({
+  weighbridgeWorking: true,
+  storageRemaining: 16400,
+  slotsOpen: 6,
+  shiftStart: "08:00",
+  shiftEnd: "18:00",
+  acceptedCrops: ["Wheat", "Rice", "Mustard"],
+  farmersPerSlot: 10,
+  mspRates: { ...defaultMspRates },
+});
 
 const createSampleQueueForDate = (date) => [
   {
     id: "sample-1",
     name: "Rajesh Kumar",
     phone: "9876543210",
-    slot: "08:00 AM",
+    slot: "08:00",
     crop: "Wheat",
     quantity: 210,
+    landArea: "1.2 ha",
     token: "FQ-1001",
     status: "Queued",
+    grossWeight: "",
+    tareWeight: "",
+    bagWeight: "",
+    slipNumber: "",
     actualWeight: "",
     paidAmount: "",
     lateMinutes: "",
     paymentStatus: "Pending",
     reportSaved: false,
+    rejectionReason: "",
+    quality: {
+      moisture: "",
+      foreignMatter: "",
+      brokenGrain: "",
+    },
     date,
   },
   {
     id: "sample-2",
     name: "Suresh Yadav",
     phone: "9812345678",
-    slot: "09:15 AM",
+    slot: "09:00",
     crop: "Rice",
     quantity: 180,
+    landArea: "1.5 ha",
     token: "FQ-1002",
-    status: "Verified",
+    status: "Queued",
+    grossWeight: "",
+    tareWeight: "",
+    bagWeight: "",
+    slipNumber: "",
     actualWeight: "",
     paidAmount: "",
     lateMinutes: "",
     paymentStatus: "Pending",
     reportSaved: false,
+    rejectionReason: "",
+    quality: {
+      moisture: "",
+      foreignMatter: "",
+      brokenGrain: "",
+    },
     date,
   },
   {
     id: "sample-3",
     name: "Pawan Verma",
     phone: "9023456781",
-    slot: "10:30 AM",
+    slot: "10:00",
     crop: "Mustard",
     quantity: 95,
+    landArea: "0.8 ha",
     token: "FQ-1003",
     status: "Queued",
+    grossWeight: "",
+    tareWeight: "",
+    bagWeight: "",
+    slipNumber: "",
     actualWeight: "",
     paidAmount: "",
     lateMinutes: "",
     paymentStatus: "Pending",
     reportSaved: false,
+    rejectionReason: "",
+    quality: {
+      moisture: "",
+      foreignMatter: "",
+      brokenGrain: "",
+    },
     date,
   },
 ];
 
 const initialStorage = [
-  { crop: "Wheat", stock: 1040, capacity: 1500 },
-  { crop: "Rice", stock: 820, capacity: 1200 },
-  { crop: "Mustard", stock: 640, capacity: 900 },
+  { crop: "Wheat", stock: 1040, capacity: 1500, remaining: 460 },
+  { crop: "Rice", stock: 820, capacity: 1200, remaining: 380 },
+  { crop: "Mustard", stock: 640, capacity: 900, remaining: 260 },
 ];
 
-const STORAGE_KEY = "faramqueue.daily.state.v1";
+const STORAGE_KEY = "faramqueue.daily.state.v2";
 
 const normalizeFarmerBooking = (booking, fallbackDate) => {
   const normalized = booking && typeof booking === "object" ? booking : {};
@@ -78,50 +131,60 @@ const normalizeFarmerBooking = (booking, fallbackDate) => {
     id: String(generatedId),
     name: normalized.name ?? "Farmer",
     phone: normalized.phone ?? normalized.mobile ?? "",
-    slot: normalized.slot ?? "N/A",
-    crop: normalized.crop ?? "General",
+    slot: normalized.slot ?? "08:00",
+    crop: normalized.crop ?? "Wheat",
     quantity: Number(normalized.quantity ?? 0),
+    landArea: normalized.landArea ?? "1.0 ha",
     token: normalized.token ?? `FQ-${Date.now().toString().slice(-6)}`,
     status: normalized.status ?? "Queued",
+    grossWeight: normalized.grossWeight ?? "",
+    tareWeight: normalized.tareWeight ?? "",
+    bagWeight: normalized.bagWeight ?? "",
+    slipNumber: normalized.slipNumber ?? "",
     actualWeight: normalized.actualWeight ?? "",
     paidAmount: normalized.paidAmount ?? "",
     lateMinutes: normalized.lateMinutes ?? "",
     paymentStatus: normalized.paymentStatus ?? "Pending",
     reportSaved: Boolean(normalized.reportSaved),
+    rejectionReason: normalized.rejectionReason ?? "",
+    quality: {
+      moisture: normalized.quality?.moisture ?? "",
+      foreignMatter: normalized.quality?.foreignMatter ?? "",
+      brokenGrain: normalized.quality?.brokenGrain ?? "",
+    },
     date: dateValue,
   };
 };
 
+const getGeneratedSlots = (setup) => {
+  const slotCount = Number(setup.slotsOpen || 1);
+  const startHour = 8;
+
+  return Array.from({ length: slotCount }, (_, index) => {
+    const hour = startHour + index;
+    const time = `${String(hour).padStart(2, "0")}:00`;
+    return time;
+  });
+};
+
 const loadState = () => {
   const today = getDateValue();
-  const fallback = {
+
+  try {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+  } catch (error) {
+    // Ignore storage access issues and fall back to the default demo state.
+  }
+
+  return {
     selectedDate: today,
     dailyQueueByDate: { [today]: createSampleQueueForDate(today) },
     storage: initialStorage,
     dateRecords: { [today]: [] },
+    morningSetup: createMorningSetup(),
   };
-
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return fallback;
-
-    const parsed = JSON.parse(raw);
-    const queueByDate = parsed.dailyQueueByDate ?? {};
-    const seededQueueByDate = { ...queueByDate };
-
-    if (!Array.isArray(seededQueueByDate[today]) || seededQueueByDate[today].length === 0) {
-      seededQueueByDate[today] = createSampleQueueForDate(today);
-    }
-
-    return {
-      selectedDate: parsed.selectedDate ?? today,
-      dailyQueueByDate: seededQueueByDate,
-      storage: parsed.storage ?? initialStorage,
-      dateRecords: parsed.dateRecords ?? { [today]: [] },
-    };
-  } catch (error) {
-    return fallback;
-  }
 };
 
 export const useFaramqueueState = () => {
@@ -136,18 +199,17 @@ export const useFaramqueueState = () => {
   const [selectedReportFarmerId, setSelectedReportFarmerId] = useState(null);
   const [dateRecords, setDateRecords] = useState(persistedState.dateRecords);
   const [paymentAlert, setPaymentAlert] = useState(null);
+  const [morningSetup, setMorningSetup] = useState(persistedState.morningSetup);
 
   useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        selectedDate,
-        dailyQueueByDate,
-        storage,
-        dateRecords,
-      }),
-    );
-  }, [selectedDate, dailyQueueByDate, storage, dateRecords]);
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch (error) {
+      // Storage is intentionally disabled so the app always starts from the default demo data.
+    }
+  }, [selectedDate, dailyQueueByDate, storage, dateRecords, morningSetup]);
 
   const farmers = dailyQueueByDate[selectedDate] ?? [];
 
@@ -179,21 +241,25 @@ export const useFaramqueueState = () => {
   }, [dateRecords, farmers, selectedDate]);
 
   const queueStats = useMemo(() => {
-    const queued = farmers.filter(
+    const active = farmers.filter(
       (farmer) => farmer.status !== "Cleared",
     ).length;
     const processed = farmers.filter(
       (farmer) => farmer.status === "Cleared",
+    ).length;
+    const arrived = farmers.filter(
+      (farmer) => farmer.status === "Arrived",
     ).length;
 
     return [
       {
         label: "Total today",
         value: String(farmers.length),
-        tone: "bg-[#f7d9b5]",
+        tone: "bg-green-100",
       },
-      { label: "In queue", value: String(queued), tone: "bg-[#f3e2c3]" },
-      { label: "Processed", value: String(processed), tone: "bg-[#e8f0d9]" },
+      { label: "Active", value: String(active), tone: "bg-emerald-100" },
+      { label: "Arrived", value: String(arrived), tone: "bg-lime-100" },
+      { label: "Cleared", value: String(processed), tone: "bg-emerald-200" },
     ];
   }, [farmers]);
 
@@ -206,7 +272,7 @@ export const useFaramqueueState = () => {
 
     alertTimerRef.current = setTimeout(() => {
       setPaymentAlert(null);
-    }, 2800);
+    }, 3200);
   };
 
   const updateFarmer = (id, field, value) => {
@@ -227,8 +293,24 @@ export const useFaramqueueState = () => {
     }));
   };
 
+  const addFarmer = (booking) => {
+    const normalizedFarmer = normalizeFarmerBooking(booking, selectedDate);
+    const nextList = [
+      ...(dailyQueueByDate[selectedDate] ?? []),
+      normalizedFarmer,
+    ];
+
+    setDailyQueueByDate((prev) => ({
+      ...prev,
+      [selectedDate]: nextList,
+    }));
+
+    return normalizedFarmer;
+  };
+
   const handleDateChange = (nextDate) => {
-    if (!nextDate || nextDate === selectedDate) return;
+    const today = getEarliestActiveDate();
+    if (!nextDate || nextDate < today || nextDate === selectedDate) return;
 
     setSelectedDate(nextDate);
     setSelectedReportFarmerId(null);
@@ -248,9 +330,7 @@ export const useFaramqueueState = () => {
 
     if (!farmer) return;
 
-    const currentStatus = farmer.paymentStatus ?? "Pending";
-
-    if (currentStatus === "Cleared" && nextStatus !== "Cleared") {
+    if (farmer.paymentStatus === "Cleared" && nextStatus !== "Cleared") {
       showPaymentAlert(
         "This payment was already cleared and cannot be changed back.",
         "danger",
@@ -258,182 +338,112 @@ export const useFaramqueueState = () => {
       return;
     }
 
-    if (nextStatus === "Cleared") {
-      showPaymentAlert(
-        "Payment marked as cleared. This action is locked in.",
-        "success",
-      );
-    }
-
     updateFarmer(id, "paymentStatus", nextStatus);
-  };
 
-  const saveFarmerReport = (id, report) => {
-    const targetFarmer = farmers.find((farmer) => farmer.id === id);
-    if (!targetFarmer) return;
+    if (nextStatus === "Cleared") {
+      updateFarmer(id, "status", "Cleared");
+      updateFarmer(id, "reportSaved", true);
+      setSelectedReportFarmerId(id);
 
-    const actualWeight = Number(report.actualWeight || 0);
-    const money = Number(report.money || 0);
-    const lateMinutes = Number(report.lateMinutes || 0);
-    const paymentStatus = report.paymentStatus ?? "Pending";
-
-    const updatedFarmer = {
-      ...targetFarmer,
-      actualWeight: String(actualWeight),
-      paidAmount: String(money),
-      lateMinutes: String(lateMinutes),
-      paymentStatus,
-      status: "Cleared",
-      reportSaved: true,
-      date: selectedDate,
-    };
-
-    setDailyQueueByDate((prev) => ({
-      ...prev,
-      [selectedDate]: (prev[selectedDate] ?? []).map((farmer) =>
-        farmer.id === id ? updatedFarmer : farmer,
-      ),
-    }));
-
-    setDateRecords((prev) => ({
-      ...prev,
-      [selectedDate]: [
-        ...(prev[selectedDate] ?? []).filter((entry) => entry.id !== id),
-        updatedFarmer,
-      ],
-    }));
-
-    if (paymentStatus === "Cleared") {
+      const amount = Number(farmer.paidAmount || 0);
       showPaymentAlert(
-        "Payment marked cleared for this slot. This action is locked.",
+        `Rs. ${amount.toLocaleString("en-IN")} transferred to farmer account.`,
         "success",
       );
     }
-
-    if (actualWeight > 0) {
-      setStorage((prevStorage) =>
-        prevStorage.map((item) =>
-          item.crop === targetFarmer.crop
-            ? { ...item, stock: Number(item.stock) + actualWeight }
-            : item,
-        ),
-      );
-    }
-  };
-
-  const addFarmer = (newFarmer) => {
-    const incomingFarmer = normalizeFarmerBooking(
-      newFarmer,
-      newFarmer?.date ?? selectedDate,
-    );
-    const targetDate = incomingFarmer.date ?? selectedDate;
-
-    setSelectedDate(targetDate);
-    setDailyQueueByDate((prev) => ({
-      ...prev,
-      [targetDate]: [
-        ...(prev[targetDate] ?? []),
-        {
-          ...incomingFarmer,
-          status: incomingFarmer.status ?? "Queued",
-          actualWeight: incomingFarmer.actualWeight ?? "",
-          paidAmount: incomingFarmer.paidAmount ?? "",
-          lateMinutes: incomingFarmer.lateMinutes ?? "",
-          paymentStatus: incomingFarmer.paymentStatus ?? "Pending",
-          reportSaved: Boolean(incomingFarmer.reportSaved),
-          date: targetDate,
-        },
-      ],
-    }));
-
-    return incomingFarmer;
-  };
-
-  const clearFarmer = (id) => {
-    const targetFarmer = farmers.find((farmer) => farmer.id === id);
-    if (!targetFarmer) return null;
-
-    setSelectedReportFarmerId(id);
-
-    setDailyQueueByDate((prev) => ({
-      ...prev,
-      [selectedDate]: (prev[selectedDate] ?? []).map((farmer) =>
-        farmer.id === id
-          ? { ...farmer, status: "Cleared", reportSaved: false }
-          : farmer,
-      ),
-    }));
-
-    return targetFarmer;
   };
 
   const verifyFarmer = (id) => {
-    setDailyQueueByDate((prev) => ({
-      ...prev,
-      [selectedDate]: (prev[selectedDate] ?? []).map((farmer) =>
-        farmer.id === id ? { ...farmer, status: "Verified" } : farmer,
-      ),
-    }));
+    updateFarmer(id, "status", "Verified");
+    showPaymentAlert("Farmer verified for gate entry.", "success");
   };
 
-  useEffect(() => {
-    if (typeof window === "undefined") return undefined;
+  const markFarmerArrived = (id) => {
+    const farmer = (dailyQueueByDate[selectedDate] ?? []).find(
+      (entry) => entry.id === id,
+    );
+    if (!farmer) return null;
 
-    const handleBookingEvent = (event) => {
-      const payload = event?.detail ?? null;
-      if (!payload) return;
-      addFarmer(payload);
-    };
-
-    const handleStorageEvent = (event) => {
-      if (event.key !== "faramqueue.booking" || !event.newValue) return;
-
-      try {
-        const payload = JSON.parse(event.newValue);
-        addFarmer(payload);
-      } catch (error) {
-        return;
-      }
-    };
-
-    window.addEventListener("faramqueue:book-slot", handleBookingEvent);
-    window.addEventListener("storage", handleStorageEvent);
-    window.faramqueueBookFarmer = (payload) => addFarmer(payload);
-
-    return () => {
-      window.removeEventListener("faramqueue:book-slot", handleBookingEvent);
-      window.removeEventListener("storage", handleStorageEvent);
-      if (window.faramqueueBookFarmer) {
-        delete window.faramqueueBookFarmer;
-      }
-    };
-  }, [selectedDate]);
-
-  const updateActualWeight = (id, weight) => {
-    updateFarmer(id, "actualWeight", weight);
+    updateFarmer(id, "status", "Arrived");
+    showPaymentAlert(
+      `SMS sent to ${farmer.name} for gate confirmation.`,
+      "success",
+    );
+    return farmer;
   };
 
-  const updateCropStorage = (crop, delta) => {
-    setStorage((prev) =>
-      prev.map((item) =>
-        item.crop === crop
-          ? {
-              ...item,
-              stock: Math.max(0, Number(item.stock) + Number(delta)),
-            }
-          : item,
-      ),
+  const clearFarmer = (id) => {
+    const farmer = (dailyQueueByDate[selectedDate] ?? []).find(
+      (entry) => entry.id === id,
+    );
+    if (!farmer) return null;
+
+    updateFarmer(id, "status", "Cleared");
+    updateFarmer(id, "reportSaved", true);
+    setSelectedReportFarmerId(id);
+
+    return farmer;
+  };
+
+  const saveFarmerReport = (id, reportPatch) => {
+    const farmer = (dailyQueueByDate[selectedDate] ?? []).find(
+      (entry) => entry.id === id,
+    );
+    if (!farmer) return;
+
+    const cropRate = morningSetup.mspRates?.[farmer.crop] ?? 0;
+    const actualWeight = Number(
+      reportPatch.actualWeight ?? farmer.actualWeight ?? 0,
+    );
+    const paymentAmount = actualWeight * cropRate;
+
+    updateFarmer(
+      id,
+      "actualWeight",
+      String(actualWeight || farmer.actualWeight || ""),
+    );
+    updateFarmer(id, "paidAmount", String(paymentAmount || ""));
+    updateFarmer(
+      id,
+      "lateMinutes",
+      String(reportPatch.lateMinutes ?? farmer.lateMinutes ?? ""),
+    );
+    updateFarmer(id, "status", "Payment");
+    updateFarmer(
+      id,
+      "paymentStatus",
+      reportPatch.paymentStatus ?? farmer.paymentStatus ?? "Pending",
+    );
+    updateFarmer(id, "reportSaved", true);
+    updateFarmer(
+      id,
+      "rejectionReason",
+      reportPatch.rejectionReason ?? farmer.rejectionReason ?? "",
+    );
+
+    if (reportPatch.quality) {
+      updateFarmer(id, "quality", reportPatch.quality);
+    }
+
+    showPaymentAlert(
+      `Report saved for ${farmer.name}. Payment due: ₹${paymentAmount.toLocaleString("en-IN")}`,
+      "success",
     );
   };
 
+  const slotOptions = getGeneratedSlots(morningSetup);
+
   return {
-    selectedDate,
     farmers,
+    selectedDateEntries,
     storage,
     queueStats,
     paymentAlert,
-    selectedDateEntries,
+    selectedDate,
     selectedReportFarmerId,
+    morningSetup,
+    setMorningSetup,
+    slotOptions,
     addFarmer,
     clearFarmer,
     saveFarmerReport,
@@ -441,7 +451,36 @@ export const useFaramqueueState = () => {
     handlePaymentStatusChange,
     updateFarmer,
     verifyFarmer,
-    updateActualWeight,
-    updateCropStorage,
+    markFarmerArrived,
+    updateCropStorage: (cropName, patch = {}) => {
+      setStorage((prev) =>
+        prev.map((entry) => {
+          if (entry.crop !== cropName) return entry;
+
+          const nextCapacity = Number(patch.capacity ?? entry.capacity ?? 0);
+          const safeCapacity = Number.isFinite(nextCapacity) ? nextCapacity : 0;
+          const currentRemaining = Number(
+            patch.remaining ??
+              entry.remaining ??
+              Math.max(safeCapacity - (entry.stock ?? 0), 0),
+          );
+          const clampedRemaining = Math.min(
+            Math.max(
+              Number.isFinite(currentRemaining) ? currentRemaining : 0,
+              0,
+            ),
+            safeCapacity,
+          );
+          const nextStock = Math.max(safeCapacity - clampedRemaining, 0);
+
+          return {
+            ...entry,
+            capacity: safeCapacity,
+            remaining: clampedRemaining,
+            stock: nextStock,
+          };
+        }),
+      );
+    },
   };
 };
