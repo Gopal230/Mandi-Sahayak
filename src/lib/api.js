@@ -276,6 +276,14 @@ export const api = {
 
   crops: (signal) => request("GET", "/reference/crops", { signal }),
 
+  /**
+   * Minimal active-crop list for the public officer registration form.
+   * Deliberately narrower than `crops` above, which needs a session because
+   * it exposes MSP season/marketing-year and centre-count detail.
+   */
+  registrationCrops: (signal) =>
+    request("GET", "/reference/registration-crops", { signal }),
+
   centres: (filters = {}, signal) =>
     request("GET", "/reference/centres", { query: filters, signal }),
 

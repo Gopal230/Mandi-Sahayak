@@ -47,10 +47,10 @@ function OfficerRegistration() {
 
   const centreOptions = centres.data ?? [];
 
-  // The same crop catalog a farmer picks from when booking a slot — not
-  // narrowed to one centre's configured list, so an officer can register for
-  // every crop they handle.
-  const crops = useApiResource((signal) => api.crops(signal), []);
+  // The public, minimal crop list: this form runs before login, so it can't
+  // call the session-gated /reference/crops. Not narrowed to one centre's
+  // configured list, so an officer can register for every crop they handle.
+  const crops = useApiResource((signal) => api.registrationCrops(signal), []);
   const cropOptions = crops.data ?? [];
 
   function toggleCrop(id) {
@@ -463,6 +463,20 @@ function OfficerRegistration() {
 
                   {crops.loading ? (
                     <p className="text-xs text-slate-400">{t("loading")}</p>
+                  ) : crops.error ? (
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="text-xs font-medium text-red-500">
+                        {translateError(t, crops.error)}
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={crops.reload}
+                        className="text-xs font-bold text-green-700 hover:underline"
+                      >
+                        {t("tryAgain")}
+                      </button>
+                    </div>
                   ) : cropOptions.length === 0 ? (
                     <p className="text-xs text-slate-400">
                       {t("noCropsAtCentre")}

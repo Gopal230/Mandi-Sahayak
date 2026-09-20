@@ -192,6 +192,54 @@ export function buildReferenceRouter(): Router {
   );
 
   // -------------------------------------------------------------------------
+  // GET /reference/registration-crops
+  // -------------------------------------------------------------------------
+  //
+  // PUBLIC, on the same reasoning as /reference/registration-centres above.
+  // `POST /auth/staff/register` is public and requires cropIds, so an
+  // applicant would otherwise need an account before they could apply for
+  // one.
+  //
+  // The projection is deliberately narrower than /reference/crops: id and
+  // canonical name only. No season, no marketing year, no MSP grades, no
+  // centre counts — those describe pricing and operations and stay behind
+  // reference.read. This answers exactly one question: "which crops may I
+  // name in an application?"
+  declareRoute({
+    method: "GET",
+    path: `${BASE}/reference/registration-crops`,
+    auth: {
+      kind: "public",
+      reason:
+        "Officer registration is public and requires cropIds. Exposes canonical name only — MSP and operational detail stay behind reference.read.",
+    },
+    csrf: false,
+    summary: "Minimal active-crop list for the officer registration form.",
+  });
+  router.get(
+    "/reference/registration-crops",
+    asyncHandler(async (req, res) => {
+      const limited = await consumeAll([
+        {
+          rule: RateLimits.PUBLIC_REFERENCE_PER_IP,
+          subject: req.clientIp ?? "unknown",
+        },
+      ]);
+      if (limited) throw toError(limited);
+
+      const result = await query<{ id: string; canonical_name: string }>(
+        `SELECT id, canonical_name FROM crops WHERE is_active ORDER BY canonical_name`,
+      );
+
+      sendData(
+        res,
+        200,
+        result.rows.map((r) => ({ id: r.id, canonicalName: r.canonical_name })),
+      );
+    }),
+  );
+
+  // -------------------------------------------------------------------------
   // GET /reference/villages?districtId=
   // -------------------------------------------------------------------------
   declareRoute({

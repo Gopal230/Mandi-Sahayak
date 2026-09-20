@@ -2079,6 +2079,36 @@ function buildReferenceRouter() {
   );
   declareRoute({
     method: "GET",
+    path: `${BASE3}/reference/registration-crops`,
+    auth: {
+      kind: "public",
+      reason: "Officer registration is public and requires cropIds. Exposes canonical name only \u2014 MSP and operational detail stay behind reference.read."
+    },
+    csrf: false,
+    summary: "Minimal active-crop list for the officer registration form."
+  });
+  router.get(
+    "/reference/registration-crops",
+    asyncHandler(async (req, res) => {
+      const limited = await consumeAll([
+        {
+          rule: RateLimits.PUBLIC_REFERENCE_PER_IP,
+          subject: req.clientIp ?? "unknown"
+        }
+      ]);
+      if (limited) throw toError(limited);
+      const result = await query(
+        `SELECT id, canonical_name FROM crops WHERE is_active ORDER BY canonical_name`
+      );
+      sendData(
+        res,
+        200,
+        result.rows.map((r) => ({ id: r.id, canonicalName: r.canonical_name }))
+      );
+    })
+  );
+  declareRoute({
+    method: "GET",
     path: `${BASE3}/reference/villages`,
     auth: { kind: "permission", permission: "reference.read" },
     csrf: false,
