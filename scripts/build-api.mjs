@@ -13,6 +13,13 @@
  * ourselves removes that tracing step entirely: there is nothing left for
  * the builder to lose. `packages: 'external'` keeps node_modules (express,
  * pg, zod, ...) out of the bundle; npm install still supplies those.
+ *
+ * api/index.js IS committed to git (not gitignored), even though this script
+ * regenerates it on every install. Vercel decides which files become
+ * Serverless Functions by scanning the git source before it runs any install
+ * step, so a gitignored, postinstall-only api/index.js is invisible at that
+ * decision point and no function gets created at all. Run this script and
+ * commit the result whenever server/src or scripts/vercel-entry.ts change.
  */
 import { build } from "esbuild";
 import { mkdirSync, rmSync } from "node:fs";
