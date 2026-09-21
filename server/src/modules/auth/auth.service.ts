@@ -217,28 +217,16 @@ export async function submitOfficerRegistration(
     );
   }
 
-  const acceptedCrops = await client.query<{ crop_id: string }>(
-    `SELECT crop_id FROM centre_crop_configurations
-      WHERE centre_id = $1 AND crop_id = ANY($2::uuid[])
-        AND is_active = true
-        AND effective_from <= CURRENT_DATE
-        AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)`,
-    [input.centreId, input.cropIds],
   const activeCrops = await client.query<{ id: string }>(
     `SELECT id FROM crops WHERE id = ANY($1::uuid[]) AND is_active = true`,
     [input.cropIds],
   );
 
-  const acceptedCropIds = new Set(acceptedCrops.rows.map((row) => row.crop_id));
-  const unaccepted = input.cropIds.filter((id) => !acceptedCropIds.has(id));
   const activeCropIds = new Set(activeCrops.rows.map((row) => row.id));
   const invalidCropIds = input.cropIds.filter((id) => !activeCropIds.has(id));
 
-  if (unaccepted.length > 0) {
   if (invalidCropIds.length > 0) {
     throw unprocessable(
-      ErrorCodes.CROP_NOT_CONFIGURED_AT_CENTRE,
-      "One or more selected crops are not accepted at the selected centre.",
       ErrorCodes.CROP_ID_INVALID,
       "One or more selected crops are not valid active crops.",
     );

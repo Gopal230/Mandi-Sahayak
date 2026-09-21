@@ -60,12 +60,8 @@ async function ready() {
 const consentCheckbox = () =>
   screen.getByRole("checkbox", { name: /confirm/i });
 
-/** Ticks the checkbox for the named crop, opening the dropdown if needed. */
 async function pickCrop(user, cropName) {
   if (!screen.queryByRole("checkbox", { name: cropName })) {
-    await user.click(
-      await screen.findByRole("button", { name: "Crops Accepted" }),
-    );
     await user.click(
       await screen.findByRole("button", { name: /crops accepted/i }),
     );
@@ -84,9 +80,6 @@ describe("/staff-register — District -> Centre, crops independent", () => {
     expect(box("Procurement Centre")).toBeDisabled();
     expect(options("Procurement Centre")).toEqual(["Select a district first"]);
 
-    await user.click(
-      await screen.findByRole("button", { name: "Crops Accepted" }),
-    );
     await user.click(
       await screen.findByRole("button", { name: /crops accepted/i }),
     );

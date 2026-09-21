@@ -227,7 +227,6 @@ export function buildReferenceRouter(): Router {
       ]);
       if (limited) throw toError(limited);
 
-      const result = await query<{ id: string; canonical_name: string }>(
       let result = await query<{ id: string; canonical_name: string }>(
         `SELECT id, canonical_name FROM crops WHERE is_active ORDER BY canonical_name`,
       );
