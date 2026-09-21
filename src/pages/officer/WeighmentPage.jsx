@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
+  const { t } = useTranslation();
   const [selectedFarmerId, setSelectedFarmerId] = useState(null);
 
   const activeFarmers = useMemo(
@@ -60,14 +62,14 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
   if (!selectedFarmer) {
     return (
       <div className="space-y-4">
-        <div className="rounded-[26px] border border-emerald-200 bg-emerald-50 p-6 text-slate-700">
-          No farmer records available for weighment.
+        <div className="rounded-[26px] border border-emerald-200 bg-emerald-50 p-6 text-black">
+          {t("noFarmerRecordsWeighment")}
         </div>
 
         {savedFarmers.length > 0 && (
           <div className="rounded-[26px] border border-emerald-200 bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-bold text-slate-900">
-              Saved weighment records
+            <h3 className="text-lg font-bold text-black">
+              {t("savedWeighmentRecords")}
             </h3>
             <div className="mt-4 space-y-2">
               {savedFarmers.map((farmer) => (
@@ -76,14 +78,15 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
                   className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2"
                 >
                   <div>
-                    <p className="font-bold text-slate-900">{farmer.name}</p>
-                    <p className="text-xs text-slate-600">
+                    <p className="font-bold text-black">{farmer.name}</p>
+                    <p className="text-xs text-black">
                       {farmer.crop} •{" "}
-                      {farmer.actualWeight || farmer.quantity || 0} quintal
+                      {farmer.actualWeight || farmer.quantity || 0}{" "}
+                      {t("quintal")}
                     </p>
                   </div>
-                  <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-800">
-                    Saved
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black">
+                    {t("saved")}
                   </span>
                 </div>
               ))}
@@ -98,11 +101,11 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
     <div className="space-y-5 pb-28">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-            Weighment
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black">
+            {t("weighment")}
           </p>
-          <h2 className="text-2xl font-black text-slate-900 sm:text-3xl">
-            Official procurement measurement
+          <h2 className="text-2xl font-black text-black sm:text-3xl">
+            {t("officialProcurementMeasurement")}
           </h2>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -115,7 +118,7 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
                 "rounded-full border px-3 py-1.5 text-xs font-semibold",
                 selectedFarmer.id === farmer.id
                   ? "border-green-700 bg-green-700 text-white"
-                  : "border-emerald-200 bg-emerald-50 text-emerald-900",
+                  : "border-emerald-200 bg-emerald-50 text-black",
               ].join(" ")}
             >
               {farmer.token || farmer.name}
@@ -127,63 +130,63 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
       <div className="rounded-[26px] border border-emerald-200 bg-emerald-50/60 p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-              Active farmer
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black">
+              {t("activeFarmer")}
             </p>
-            <h3 className="mt-2 text-2xl font-black text-slate-900">
+            <h3 className="mt-2 text-2xl font-black text-black">
               {selectedFarmer.name}
             </h3>
           </div>
-          <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-emerald-800">
+          <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-black">
             {selectedFarmer.apiStatus === "QUALITY_CHECK"
-              ? "Quality check required"
+              ? t("qualityCheckRequired")
               : selectedFarmer.token}
           </span>
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
-            Gross weight (quintal)
+          <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black">
+            {t("grossWeightQuintal")}
             <input
               type="number"
               value={selectedFarmer.grossWeight ?? ""}
               onChange={(event) =>
                 updateField("grossWeight", event.target.value)
               }
-              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 outline-none"
+              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
             />
           </label>
 
-          <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
-            Tare weight (quintal)
+          <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black">
+            {t("tareWeightQuintal")}
             <input
               type="number"
               value={selectedFarmer.tareWeight ?? ""}
               onChange={(event) =>
                 updateField("tareWeight", event.target.value)
               }
-              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 outline-none"
+              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
             />
           </label>
 
-          <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
-            Bag weight (quintal)
+          <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black">
+            {t("bagWeightQuintal")}
             <input
               type="number"
               value={selectedFarmer.bagWeight ?? ""}
               onChange={(event) => updateField("bagWeight", event.target.value)}
-              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 outline-none"
+              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
             />
           </label>
 
-          <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-700 md:col-span-2 xl:col-span-1">
-            Weighbridge slip no.
+          <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black md:col-span-2 xl:col-span-1">
+            {t("weighbridgeSlipNo")}
             <input
               value={selectedFarmer.slipNumber ?? ""}
               onChange={(event) =>
                 updateField("slipNumber", event.target.value)
               }
-              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 outline-none"
+              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
             />
           </label>
         </div>
@@ -191,22 +194,23 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
         <div className="mt-6 rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
-                Official net weight
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black">
+                {t("officialNetWeight")}
               </p>
-              <p className="mt-1 text-4xl font-black text-slate-900">
-                {netWeight.toFixed(1)} quintal
+              <p className="mt-1 text-4xl font-black text-black">
+                {netWeight.toFixed(1)} {t("quintal")}
               </p>
             </div>
-            <div className="text-sm font-semibold text-slate-600">
-              Declared: {declared} quintal
+            <div className="text-sm font-semibold text-black">
+              {t("declaredQuintal", { value: declared })}
             </div>
           </div>
 
           {isAlert && (
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
-              Alert: actual net weight differs from declared quantity by{" "}
-              {Math.abs(variance).toFixed(1)} quintal.
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-black">
+              {t("weightVarianceAlert", {
+                diff: Math.abs(variance).toFixed(1),
+              })}
             </div>
           )}
         </div>
@@ -219,15 +223,15 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
           className="rounded-full bg-green-700 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 hover:bg-green-800"
         >
           {selectedFarmer.apiStatus === "QUALITY_CHECK"
-            ? "✅ Save quality and accepted weight"
-            : "⚖️ Save gross weight"}
+            ? `✅ ${t("saveQualityAndWeight")}`
+            : `⚖️ ${t("saveGrossWeight")}`}
         </button>
       </div>
 
       {savedFarmers.length > 0 && (
         <div className="rounded-[26px] border border-emerald-200 bg-white p-5 shadow-sm">
-          <h3 className="text-lg font-bold text-slate-900">
-            Saved weighment records
+          <h3 className="text-lg font-bold text-black">
+            {t("savedWeighmentRecords")}
           </h3>
           <div className="mt-4 space-y-2">
             {savedFarmers.map((farmer) => (
@@ -236,14 +240,15 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
                 className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2"
               >
                 <div>
-                  <p className="font-bold text-slate-900">{farmer.name}</p>
-                  <p className="text-xs text-slate-600">
+                  <p className="font-bold text-black">{farmer.name}</p>
+                  <p className="text-xs text-black">
                     {farmer.crop} •{" "}
-                    {farmer.actualWeight || farmer.quantity || 0} quintal
+                    {farmer.actualWeight || farmer.quantity || 0}{" "}
+                    {t("quintal")}
                   </p>
                 </div>
-                <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-800">
-                  Saved
+                <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black">
+                  {t("saved")}
                 </span>
               </div>
             ))}

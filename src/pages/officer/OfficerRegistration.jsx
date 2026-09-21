@@ -7,6 +7,7 @@ import { translateError, translateFieldErrors } from "../../lib/codes";
 import useApiResource from "../../hooks/useApiResource";
 import LanguageToggle from "../../components/LanguageToggle";
 import { ErrorState } from "../../components/StateViews";
+import MultiSelect from "../../components/MultiSelect";
 
 const CONSENT_POLICY_VERSION = "v1";
 
@@ -52,15 +53,6 @@ function OfficerRegistration() {
   // configured list, so an officer can register for every crop they handle.
   const crops = useApiResource((signal) => api.registrationCrops(signal), []);
   const cropOptions = crops.data ?? [];
-
-  function toggleCrop(id) {
-    setCropIds((previous) =>
-      previous.includes(id)
-        ? previous.filter((entry) => entry !== id)
-        : [...previous, id],
-    );
-    clearFieldError("cropIds");
-  }
 
   function clearFieldError(field) {
     setFieldErrors((previous) => {
@@ -144,12 +136,12 @@ function OfficerRegistration() {
   }
 
   const inputClasses = (hasError) =>
-    `min-h-13 w-full rounded-xl border bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 ${
+    `min-h-13 w-full rounded-xl border bg-white px-4 text-sm text-black outline-none transition placeholder:text-black focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 ${
       hasError ? "border-red-400" : "border-slate-200"
     }`;
 
   const header = (
-    <header className="bg-[#11a255] text-white">
+    <header className="bg-[#0e8a48] text-white">
       <div className="mx-auto flex min-h-[72px] w-full max-w-[1280px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <button
           type="button"
@@ -162,10 +154,10 @@ function OfficerRegistration() {
 
           <span>
             <span className="block text-lg font-extrabold tracking-tight">
-              Mandi Sahayak
+              {t("appName")}
             </span>
 
-            <span className="hidden text-xs font-medium text-white/80 sm:block">
+            <span className="hidden text-xs font-semibold text-white/80 sm:block">
               {t("staffPortal")}
             </span>
           </span>
@@ -177,7 +169,7 @@ function OfficerRegistration() {
           <button
             type="button"
             onClick={() => navigate("/staff-login")}
-            className="rounded-full border border-white/30 bg-white px-4 py-2 text-sm font-bold text-[#15803d] transition hover:bg-white/90"
+            className="rounded-full border border-white/30 bg-white px-4 py-2 text-sm font-bold text-[#126d34] transition hover:bg-white/90"
           >
             {t("login")}
           </button>
@@ -187,7 +179,7 @@ function OfficerRegistration() {
   );
 
   return (
-    <div className="min-h-screen bg-[#f3f5f3] text-slate-900">
+    <div className="min-h-screen bg-[#f3f5f3] text-black">
       {header}
 
       <main className="mx-auto w-full max-w-[1000px] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
@@ -197,15 +189,15 @@ function OfficerRegistration() {
               🏛️
             </div>
 
-            <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
+            <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-black">
               {t("officer")}
             </p>
 
-            <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+            <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-black sm:text-3xl">
               {t("officerRegistration")}
             </h1>
 
-            <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-slate-500">
+            <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-black">
               {t("officerRegistrationDescription")}
             </p>
           </div>
@@ -226,11 +218,11 @@ function OfficerRegistration() {
             >
               {/* ---- identity ---------------------------------------------- */}
               <div className="border-b border-slate-100 pb-6">
-                <h2 className="text-base font-extrabold text-slate-900">
+                <h2 className="text-base font-extrabold text-black">
                   {t("personalDetails")}
                 </h2>
 
-                <p className="mt-1 text-xs leading-5 text-slate-400">
+                <p className="mt-1 text-xs leading-5 text-black">
                   {t("officerPersonalDetailsDescription")}
                 </p>
 
@@ -238,7 +230,7 @@ function OfficerRegistration() {
                   <div>
                     <label
                       htmlFor="fullName"
-                      className="mb-2 block text-sm font-bold text-slate-700"
+                      className="mb-2 block text-sm font-bold text-black"
                     >
                       {t("fullName")}
                     </label>
@@ -257,7 +249,7 @@ function OfficerRegistration() {
                     />
 
                     {fieldErrors.fullName && (
-                      <p className="mt-2 text-xs font-medium text-red-500">
+                      <p className="mt-2 text-xs font-semibold text-black">
                         {fieldErrors.fullName}
                       </p>
                     )}
@@ -266,7 +258,7 @@ function OfficerRegistration() {
                   <div>
                     <label
                       htmlFor="phone"
-                      className="mb-2 block text-sm font-bold text-slate-700"
+                      className="mb-2 block text-sm font-bold text-black"
                     >
                       {t("mobileNumber")}
                     </label>
@@ -278,7 +270,7 @@ function OfficerRegistration() {
                           : "border-slate-200 focus-within:border-emerald-500"
                       }`}
                     >
-                      <span className="flex min-h-13 items-center border-r border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-600">
+                      <span className="flex min-h-13 items-center border-r border-slate-200 bg-slate-50 px-4 text-sm font-bold text-black">
                         +91
                       </span>
 
@@ -296,12 +288,12 @@ function OfficerRegistration() {
                           );
                           clearFieldError("phone");
                         }}
-                        className="min-h-13 min-w-0 flex-1 bg-white px-4 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                        className="min-h-13 min-w-0 flex-1 bg-white px-4 text-sm text-black outline-none placeholder:text-black"
                       />
                     </div>
 
                     {fieldErrors.phone && (
-                      <p className="mt-2 text-xs font-medium text-red-500">
+                      <p className="mt-2 text-xs font-semibold text-black">
                         {fieldErrors.phone}
                       </p>
                     )}
@@ -311,11 +303,11 @@ function OfficerRegistration() {
 
               {/* ---- assignment -------------------------------------------- */}
               <div className="border-b border-slate-100 py-6">
-                <h2 className="text-base font-extrabold text-slate-900">
+                <h2 className="text-base font-extrabold text-black">
                   {t("postingDetails")}
                 </h2>
 
-                <p className="mt-1 text-xs leading-5 text-slate-400">
+                <p className="mt-1 text-xs leading-5 text-black">
                   Select your district, procurement centre, and the crops you
                   handle.
                 </p>
@@ -324,7 +316,7 @@ function OfficerRegistration() {
                   <div>
                     <label
                       htmlFor="districtId"
-                      className="mb-2 block text-sm font-bold text-slate-700"
+                      className="mb-2 block text-sm font-bold text-black"
                     >
                       {t("district")}
                     </label>
@@ -366,7 +358,7 @@ function OfficerRegistration() {
 
                     {districts.error && (
                       <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <p className="text-xs font-medium text-red-500">
+                        <p className="text-xs font-semibold text-black">
                           {t("districtsUnavailable")}{" "}
                           {translateError(t, districts.error)}
                         </p>
@@ -374,7 +366,7 @@ function OfficerRegistration() {
                         <button
                           type="button"
                           onClick={districts.reload}
-                          className="text-xs font-bold text-green-700 hover:underline"
+                          className="text-xs font-bold text-black hover:underline"
                         >
                           {t("tryAgain")}
                         </button>
@@ -382,7 +374,7 @@ function OfficerRegistration() {
                     )}
 
                     {fieldErrors.districtId && (
-                      <p className="mt-2 text-xs font-medium text-red-500">
+                      <p className="mt-2 text-xs font-semibold text-black">
                         {fieldErrors.districtId}
                       </p>
                     )}
@@ -391,7 +383,7 @@ function OfficerRegistration() {
                   <div>
                     <label
                       htmlFor="centreId"
-                      className="mb-2 block text-sm font-bold text-slate-700"
+                      className="mb-2 block text-sm font-bold text-black"
                     >
                       {t("procurementCentre")}
                     </label>
@@ -427,21 +419,21 @@ function OfficerRegistration() {
                       !centres.loading &&
                       !centres.error &&
                       centreOptions.length === 0 && (
-                        <p className="mt-2 text-xs text-slate-400">
+                        <p className="mt-2 text-xs text-black">
                           {t("noCentresInDistrict")}
                         </p>
                       )}
 
                     {centres.error && (
                       <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <p className="text-xs font-medium text-red-500">
+                        <p className="text-xs font-semibold text-black">
                           {translateError(t, centres.error)}
                         </p>
 
                         <button
                           type="button"
                           onClick={centres.reload}
-                          className="text-xs font-bold text-green-700 hover:underline"
+                          className="text-xs font-bold text-black hover:underline"
                         >
                           {t("tryAgain")}
                         </button>
@@ -449,7 +441,7 @@ function OfficerRegistration() {
                     )}
 
                     {fieldErrors.centreId && (
-                      <p className="mt-2 text-xs font-medium text-red-500">
+                      <p className="mt-2 text-xs font-semibold text-black">
                         {fieldErrors.centreId}
                       </p>
                     )}
@@ -457,55 +449,53 @@ function OfficerRegistration() {
                 </div>
 
                 <div className="mt-5">
-                  <label className="mb-2 block text-sm font-bold text-slate-700">
+                  <label
+                    htmlFor="cropIds"
+                    className="mb-2 block text-sm font-bold text-black"
+                  >
                     {t("cropsAccepted")}
                   </label>
 
                   {crops.loading ? (
-                    <p className="text-xs text-slate-400">{t("loading")}</p>
+                    <p className="text-xs text-black">{t("loading")}</p>
                   ) : crops.error ? (
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <p className="text-xs font-medium text-red-500">
+                      <p className="text-xs font-semibold text-black">
                         {translateError(t, crops.error)}
                       </p>
 
                       <button
                         type="button"
                         onClick={crops.reload}
-                        className="text-xs font-bold text-green-700 hover:underline"
+                        className="text-xs font-bold text-black hover:underline"
                       >
                         {t("tryAgain")}
                       </button>
                     </div>
                   ) : cropOptions.length === 0 ? (
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-black">
                       {t("noCropsAtCentre")}
                     </p>
                   ) : (
-                    <div
-                      className={`grid grid-cols-2 gap-2 rounded-xl border p-3 sm:grid-cols-3 ${
-                        fieldErrors.cropIds ? "border-red-400" : "border-slate-200"
-                      }`}
-                    >
-                      {cropOptions.map((crop) => (
-                        <label
-                          key={crop.id}
-                          className="flex items-center gap-2 text-sm font-medium text-slate-700"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={cropIds.includes(crop.id)}
-                            onChange={() => toggleCrop(crop.id)}
-                            className="h-4 w-4 accent-[#11a255]"
-                          />
-                          {crop.canonicalName}
-                        </label>
-                      ))}
-                    </div>
+                    <MultiSelect
+                      id="cropIds"
+                      options={cropOptions.map((crop) => ({
+                        id: crop.id,
+                        label: crop.canonicalName,
+                      }))}
+                      value={cropIds}
+                      onChange={(next) => {
+                        setCropIds(next);
+                        clearFieldError("cropIds");
+                      }}
+                      placeholder={t("selectCrops") || "Select crops"}
+                      error={Boolean(fieldErrors.cropIds)}
+                      ariaLabel={t("cropsAccepted")}
+                    />
                   )}
 
                   {fieldErrors.cropIds && (
-                    <p className="mt-2 text-xs font-medium text-red-500">
+                    <p className="mt-2 text-xs font-semibold text-black">
                       {fieldErrors.cropIds}
                     </p>
                   )}
@@ -521,19 +511,19 @@ function OfficerRegistration() {
                     setConsent(event.target.checked);
                     clearFieldError("consent");
                   }}
-                  className="mt-0.5 h-4 w-4 accent-[#11a255]"
+                  className="mt-0.5 h-4 w-4 accent-[#0e8a48]"
                 />
 
                 <label
                   htmlFor="consent"
-                  className="text-xs leading-5 text-slate-500"
+                  className="text-xs leading-5 text-black"
                 >
                   {t("officerConsentText")}
                 </label>
               </div>
 
               {fieldErrors.consent && (
-                <p className="mt-2 text-xs font-medium text-red-500">
+                <p className="mt-2 text-xs font-semibold text-black">
                   {fieldErrors.consent}
                 </p>
               )}
@@ -541,19 +531,19 @@ function OfficerRegistration() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="mt-6 min-h-13 w-full rounded-xl bg-[#11a255] text-sm font-bold text-white transition hover:bg-[#0e8b49] disabled:cursor-not-allowed disabled:bg-emerald-300"
+                className="mt-6 min-h-13 w-full rounded-xl bg-[#0e8a48] text-sm font-bold text-white transition hover:bg-[#0c763e] disabled:cursor-not-allowed disabled:bg-emerald-300"
               >
                 {submitting ? t("submitting") : `${t("submitApplication")} →`}
               </button>
             </form>
           </div>
 
-          <p className="mt-5 text-center text-sm text-slate-500">
+          <p className="mt-5 text-center text-sm text-black">
             {t("alreadyHaveOfficerAccount")}{" "}
             <button
               type="button"
               onClick={() => navigate("/staff-login")}
-              className="font-bold text-emerald-700 hover:underline"
+              className="font-bold text-black hover:underline"
             >
               {t("staffLogin")}
             </button>

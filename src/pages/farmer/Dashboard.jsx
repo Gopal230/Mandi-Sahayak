@@ -137,7 +137,7 @@ function Dashboard() {
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-green-100">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-white">
                     {t("currentBooking")}
                   </p>
 
@@ -145,7 +145,7 @@ function Dashboard() {
                     {current.centre?.name}
                   </h2>
 
-                  <p className="mt-1 text-xs text-green-100">
+                  <p className="mt-1 text-xs text-white">
                     {current.bookingCode}
                   </p>
                 </div>
@@ -160,7 +160,7 @@ function Dashboard() {
 
               <div className="mt-5 grid grid-cols-3 gap-2">
                 <div className="rounded-2xl bg-white/10 p-3 text-center">
-                  <p className="text-xs text-green-100">
+                  <p className="text-xs text-white">
                     {t("tokenNumberLabel")}
                   </p>
 
@@ -170,7 +170,7 @@ function Dashboard() {
                 </div>
 
                 <div className="rounded-2xl bg-white/10 p-3 text-center">
-                  <p className="text-xs text-green-100">
+                  <p className="text-xs text-white">
                     {t("yourPosition")}
                   </p>
 
@@ -183,7 +183,7 @@ function Dashboard() {
                 </div>
 
                 <div className="rounded-2xl bg-white/10 p-3 text-center">
-                  <p className="text-xs text-green-100">
+                  <p className="text-xs text-white">
                     {t("estimatedWait")}
                   </p>
 
@@ -206,7 +206,7 @@ function Dashboard() {
               <div className="mt-4 rounded-2xl bg-white/10 p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="text-xs text-green-100">
+                    <p className="text-xs text-white">
                       {queue.data?.inQueue &&
                       typeof queue.data.aheadAtCentre ===
                         "number"
@@ -233,7 +233,7 @@ function Dashboard() {
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <p className="text-xs text-green-100">
+                    <p className="text-xs text-white">
                       {t("date")}
                     </p>
 
@@ -247,7 +247,7 @@ function Dashboard() {
                   </div>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-green-100">
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-white">
                   <span>
                     {formatTimeRange(
                       current.scheduledStartAt,
@@ -271,7 +271,7 @@ function Dashboard() {
               <button
                 type="button"
                 onClick={() => navigate("/queue")}
-                className="mt-4 w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-green-700"
+                className="mt-4 w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-black"
               >
                 {t("viewQueueStatus")} →
               </button>
@@ -287,11 +287,11 @@ function Dashboard() {
               📅
             </div>
 
-            <h2 className="mt-4 text-lg font-bold text-slate-900">
+            <h2 className="mt-4 text-lg font-bold text-black">
               {t("noActiveBooking")}
             </h2>
 
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-black">
               {t("noActiveBookingDescription")}
             </p>
 
@@ -312,26 +312,26 @@ function Dashboard() {
           className="mt-3 flex w-full items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50/60 px-4 py-3 text-left"
         >
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-black">
               {active.length} {t("records")}
             </p>
 
-            <p className="mt-1 text-sm font-medium text-slate-700">
+            <p className="mt-1 text-sm font-semibold text-black">
               {t("myBooking")}
             </p>
           </div>
 
-          <span className="text-emerald-700">→</span>
+          <span className="text-black">→</span>
         </button>
       )}
 
       <section className="mt-6">
         <div className="mb-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black">
             {t("services")}
           </p>
 
-          <h2 className="mt-1 text-lg font-bold text-slate-900">
+          <h2 className="mt-1 text-lg font-bold text-black">
             {t("chooseWhatYouNeed")}
           </h2>
         </div>
@@ -350,11 +350,11 @@ function Dashboard() {
                 {service.icon}
               </div>
 
-              <h3 className="mt-3 font-semibold text-slate-900">
+              <h3 className="mt-3 font-semibold text-black">
                 {t(service.title)}
               </h3>
 
-              <p className="mt-1 text-xs leading-4 text-slate-500">
+              <p className="mt-1 text-xs leading-4 text-black">
                 {t(service.body)}
               </p>
 
@@ -376,11 +376,11 @@ function Dashboard() {
           </div>
 
           <div className="min-w-0">
-            <h3 className="font-semibold text-slate-900">
+            <h3 className="font-semibold text-black">
               {t("howItWorks")}
             </h3>
 
-            <p className="mt-1 text-sm leading-5 text-slate-500">
+            <p className="mt-1 text-sm leading-5 text-black">
               {t("bookTrackStayUpdated")}
             </p>
           </div>
@@ -404,7 +404,7 @@ function Dashboard() {
               queue.reload();
               unread.reload();
             }}
-            className="text-sm font-semibold text-emerald-700 hover:underline"
+            className="text-sm font-semibold text-black hover:underline"
           >
             {t("refresh")}
           </button>

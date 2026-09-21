@@ -42,31 +42,31 @@ function BookingConfirmation() {
             </div>
           </div>
 
-          <h1 className="mt-7 text-2xl font-bold text-slate-900">
+          <h1 className="mt-7 text-2xl font-bold text-black">
             {t("bookingConfirmedTitle")}
           </h1>
 
-          <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500">
+          <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-black">
             {t("bookingConfirmedMessage")}
           </p>
 
           <div className="mt-7 grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-green-100 bg-green-50 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-green-700">
+              <p className="text-xs font-semibold uppercase tracking-wide text-black">
                 {t("bookingCode")}
               </p>
 
-              <p className="mt-1 text-lg font-bold tracking-wide text-slate-900">
+              <p className="mt-1 text-lg font-bold tracking-wide text-black">
                 {booking.bookingCode}
               </p>
             </div>
 
             <div className="rounded-2xl border border-green-100 bg-green-50 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-green-700">
+              <p className="text-xs font-semibold uppercase tracking-wide text-black">
                 {t("tokenNumberLabel")}
               </p>
 
-              <p className="mt-1 text-lg font-bold tracking-wide text-slate-900">
+              <p className="mt-1 text-lg font-bold tracking-wide text-black">
                 {booking.tokenNumber}
               </p>
             </div>
@@ -74,42 +74,42 @@ function BookingConfirmation() {
 
           <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-left">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-black">
                 {t("procurementCentre")}
               </span>
 
-              <span className="text-right text-sm font-semibold text-slate-900">
+              <span className="text-right text-sm font-semibold text-black">
                 {booking.centre?.name}
               </span>
             </div>
 
             <div className="flex items-center justify-between border-b border-slate-200 py-3">
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-black">
                 {t("crop")}
               </span>
 
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-sm font-semibold text-black">
                 {booking.crop?.name}
               </span>
             </div>
 
             <div className="flex items-center justify-between border-b border-slate-200 py-3">
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-black">
                 {t("quantity")}
               </span>
 
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-sm font-semibold text-black">
                 {formatQuantity(quantityQuintal, locale)}{" "}
                 {t("quintal")}
               </span>
             </div>
 
             <div className="flex items-center justify-between border-b border-slate-200 py-3">
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-black">
                 {t("date")}
               </span>
 
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-sm font-semibold text-black">
                 {formatDate(
                   booking.serviceDate,
                   zone,
@@ -119,11 +119,11 @@ function BookingConfirmation() {
             </div>
 
             <div className="flex items-center justify-between py-3">
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-black">
                 {t("arriveBy")}
               </span>
 
-              <span className="text-right text-sm font-semibold text-slate-900">
+              <span className="text-right text-sm font-semibold text-black">
                 {formatTimeRange(
                   booking.scheduledStartAt,
                   booking.processingEndAt,
@@ -136,7 +136,7 @@ function BookingConfirmation() {
             <DataTypeNote dataType={booking.centre?.dataType} />
           </div>
 
-          <p className="mt-4 text-xs text-slate-400">
+          <p className="mt-4 text-xs text-black">
             {t("statusLabel")}:{" "}
             {translateDisplayStatus(
               t,
@@ -159,7 +159,7 @@ function BookingConfirmation() {
             onClick={() =>
               navigate("/my-booking", { replace: true })
             }
-            className="mt-3 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700"
+            className="mt-3 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-black"
           >
             {t("myBooking")}
           </button>

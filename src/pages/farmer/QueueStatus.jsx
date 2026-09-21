@@ -107,7 +107,7 @@ function QueueStatus() {
               <button
                 type="button"
                 onClick={() => navigate("/book-slot")}
-                className="mt-6 min-h-12 w-full rounded-xl bg-[#15803d] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#166534]"
+                className="mt-6 min-h-12 w-full rounded-xl bg-[#126d34] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#13562c]"
               >
                 {t("bookSlot")} →
               </button>
@@ -119,7 +119,7 @@ function QueueStatus() {
         <div className="mb-4">
           <label
             htmlFor="bookingSelect"
-            className="block text-sm font-medium text-slate-700"
+            className="block text-sm font-semibold text-black"
           >
             {t("selectBooking")}
           </label>
@@ -157,10 +157,10 @@ function QueueStatus() {
       {data && (
         <>
           <section className="overflow-hidden rounded-[28px] border border-[#a7f3d0] bg-white shadow-sm">
-            <div className="bg-[#11a255] p-5 text-white sm:p-6">
+            <div className="bg-[#0e8a48] p-5 text-white sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-100">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white">
                     {t("tokenNumberLabel")}
                   </p>
 
@@ -168,7 +168,7 @@ function QueueStatus() {
                     {data.tokenNumber}
                   </p>
 
-                  <p className="mt-1 text-xs text-green-100">
+                  <p className="mt-1 text-xs text-white">
                     {data.bookingCode}
                   </p>
                 </div>
@@ -184,7 +184,7 @@ function QueueStatus() {
               {data.inQueue ? (
                 <div className="mt-5 grid grid-cols-3 gap-2">
                   <div className="rounded-2xl bg-white/10 p-3 text-center">
-                    <p className="text-xs text-green-100">
+                    <p className="text-xs text-white">
                       {t("yourPosition")}
                     </p>
 
@@ -194,7 +194,7 @@ function QueueStatus() {
                   </div>
 
                   <div className="rounded-2xl bg-white/10 p-3 text-center">
-                    <p className="text-xs text-green-100">
+                    <p className="text-xs text-white">
                       {t("aheadOnLane")}
                     </p>
 
@@ -204,7 +204,7 @@ function QueueStatus() {
                   </div>
 
                   <div className="rounded-2xl bg-white/10 p-3 text-center">
-                    <p className="text-xs text-green-100">
+                    <p className="text-xs text-white">
                       {t("aheadAtCentre")}
                     </p>
 
@@ -219,7 +219,7 @@ function QueueStatus() {
                     {t("notInQueue")}
                   </p>
 
-                  <p className="mt-1 text-xs text-green-100">
+                  <p className="mt-1 text-xs text-white">
                     {t("notInQueueDescription")}
                   </p>
                 </div>
@@ -229,7 +229,7 @@ function QueueStatus() {
 
           <section className="mt-4 rounded-[28px] border border-[#a7f3d0] bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-semibold text-slate-900">
+              <h2 className="font-semibold text-black">
                 {t("estimatedWait")}
               </h2>
 
@@ -247,7 +247,7 @@ function QueueStatus() {
             </div>
 
             {data.etaConfidence === "UNAVAILABLE" ? (
-              <p className="mt-3 text-sm leading-5 text-slate-500">
+              <p className="mt-3 text-sm leading-5 text-black">
                 {translateEtaReason(
                   t,
                   data.etaUnavailableReason,
@@ -255,7 +255,7 @@ function QueueStatus() {
               </p>
             ) : (
               <>
-                <p className="mt-3 text-3xl font-bold text-slate-900">
+                <p className="mt-3 text-3xl font-bold text-black">
                   {typeof data.estimatedWaitMinutes ===
                   "number"
                     ? formatMinutes(
@@ -268,11 +268,11 @@ function QueueStatus() {
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-2xl bg-slate-50 p-4">
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-black">
                       {t("estimatedStart")}
                     </p>
 
-                    <p className="mt-1 font-medium text-slate-800">
+                    <p className="mt-1 font-semibold text-black">
                       {formatTime(
                         data.estimatedStartAt,
                         data.centreTimezone,
@@ -282,11 +282,11 @@ function QueueStatus() {
                   </div>
 
                   <div className="rounded-2xl bg-slate-50 p-4">
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-black">
                       {t("lane")}
                     </p>
 
-                    <p className="mt-1 font-medium text-slate-800">
+                    <p className="mt-1 font-semibold text-black">
                       {data.laneNo} / {data.laneCount}
                     </p>
                   </div>
@@ -297,22 +297,22 @@ function QueueStatus() {
 
           <section className="mt-4 rounded-[28px] border border-[#a7f3d0] bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-black">
                 {t("nowServing")}
               </span>
 
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-sm font-semibold text-black">
                 {data.currentlyServingToken ??
                   t("laneIdle")}
               </span>
             </div>
 
             <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-black">
                 {t("queueStatus")}
               </span>
 
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-sm font-semibold text-black">
                 {translateQueueState(
                   t,
                   data.queueState,
@@ -322,7 +322,7 @@ function QueueStatus() {
           </section>
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-black">
               {t("queueUpdatedAt", {
                 time:
                   formatTime(
@@ -336,7 +336,7 @@ function QueueStatus() {
             <button
               type="button"
               onClick={queue.reload}
-              className="min-h-11 rounded-xl border border-green-100 bg-green-50 px-5 py-2 text-sm font-semibold text-green-700 transition hover:bg-green-100"
+              className="min-h-11 rounded-xl border border-green-100 bg-green-50 px-5 py-2 text-sm font-semibold text-black transition hover:bg-green-100"
             >
               {t("refresh")}
             </button>
@@ -344,11 +344,11 @@ function QueueStatus() {
 
           {data.etaBasis && (
             <details className="mt-3 rounded-[24px] border border-slate-200 bg-white p-4 text-sm shadow-sm">
-              <summary className="cursor-pointer font-medium text-slate-700">
+              <summary className="cursor-pointer font-semibold text-black">
                 {t("etaBasisLabel")}
               </summary>
 
-              <p className="mt-2 leading-5 text-slate-500">
+              <p className="mt-2 leading-5 text-black">
                 {data.etaBasis}
               </p>
             </details>

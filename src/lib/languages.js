@@ -15,6 +15,11 @@
 export const LANGUAGES = [
   { code: "en", nativeName: "English", englishName: "English" },
   { code: "hi", nativeName: "हिन्दी", englishName: "Hindi" },
+  { code: "mr", nativeName: "मराठी", englishName: "Marathi" },
+  { code: "bn", nativeName: "বাংলা", englishName: "Bengali" },
+  { code: "ta", nativeName: "தமிழ்", englishName: "Tamil" },
+  { code: "te", nativeName: "తెలుగు", englishName: "Telugu" },
+  { code: "pa", nativeName: "ਪੰਜਾਬੀ", englishName: "Punjabi" },
 ];
 
 export const LANGUAGE_CODES = LANGUAGES.map((language) => language.code);

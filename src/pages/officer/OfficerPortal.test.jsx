@@ -2,8 +2,8 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import { fail, mockApi } from "../test/server";
-import { renderScreen } from "../test/render";
+import { fail, mockApi } from "../../test/server";
+import { renderScreen } from "../../test/render";
 import OfficerPortal from "./OfficerPortal";
 
 /** The signed-in officer the portal greets and scopes its reads by. */
@@ -141,7 +141,7 @@ describe("OfficerPortal", () => {
     expect(await screen.findByText("Arrived")).toBeInTheDocument();
   });
 
-  it("surfaces the server's error code rather than failing silently", async () => {
+  it("surfaces the server's error rather than failing silently", async () => {
     mockApi(
       routes({
         "POST /officer/bookings/:bookingCode/arrive": fail(
@@ -160,8 +160,10 @@ describe("OfficerPortal", () => {
       await screen.findByRole("button", { name: /arrived/i }),
     );
 
+    // Translated via translateError, the same as every other error banner in
+    // the app — not the raw machine code.
     expect(
-      await screen.findByText("INVALID_STATE_TRANSITION"),
+      await screen.findByText("This booking cannot be changed from its current state."),
     ).toBeInTheDocument();
   });
 });

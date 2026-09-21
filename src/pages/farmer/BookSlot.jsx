@@ -188,8 +188,8 @@ function BookSlot() {
               </div>
 
               <div>
-                <h2 className="font-semibold text-slate-900">{t("crop")}</h2>
-                <p className="text-xs text-slate-500">{t("selectCropDescription")}</p>
+                <h2 className="font-semibold text-black">{t("crop")}</h2>
+                <p className="text-xs text-black">{t("selectCropDescription")}</p>
               </div>
             </div>
 
@@ -199,10 +199,10 @@ function BookSlot() {
                 onClick={() => setCropListOpen((open) => !open)}
                 className={`flex items-center justify-between text-left ${control}`}
               >
-                <span className={selectedCrop ? "text-slate-900" : "text-slate-400"}>
+                <span className="text-black">
                   {selectedCrop ? selectedCrop.canonicalName : t("selectCrop")}
                 </span>
-                <span className="text-slate-400">▾</span>
+                <span className="text-black">▾</span>
               </button>
 
               {cropListOpen && (
@@ -219,7 +219,7 @@ function BookSlot() {
                   </div>
 
                   {visibleCrops.length === 0 && (
-                    <p className="px-3 py-4 text-center text-sm text-slate-400">
+                    <p className="px-3 py-4 text-center text-sm text-black">
                       {t("noCropsMatch")}
                     </p>
                   )}
@@ -240,9 +240,9 @@ function BookSlot() {
                       }`}
                     >
                       {}
-                      <span className="text-slate-800">{crop.canonicalName}</span>
+                      <span className="text-black">{crop.canonicalName}</span>
 
-                      <span className="ml-2 shrink-0 text-xs text-slate-400">
+                      <span className="ml-2 shrink-0 text-xs text-black">
                         {crop.season?.code} {crop.marketingYear}
                       </span>
                     </button>
@@ -260,8 +260,8 @@ function BookSlot() {
               </div>
 
               <div>
-                <h2 className="font-semibold text-slate-900">{t("procurementCentre")}</h2>
-                <p className="text-xs text-slate-500">{t("selectCentreDescription")}</p>
+                <h2 className="font-semibold text-black">{t("procurementCentre")}</h2>
+                <p className="text-xs text-black">{t("selectCentreDescription")}</p>
               </div>
             </div>
 
@@ -272,7 +272,7 @@ function BookSlot() {
                 setCentreId(event.target.value);
                 invalidateOffer();
               }}
-              className={`${control} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400`}
+              className={`${control} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-black`}
             >
               <option value="">
                 {!cropId
@@ -291,11 +291,11 @@ function BookSlot() {
             </select>
 
             {cropId && !centres.loading && (centres.data ?? []).length === 0 && (
-              <p className="mt-2 text-xs text-amber-700">{t("noCentresForCrop")}</p>
+              <p className="mt-2 text-xs text-black">{t("noCentresForCrop")}</p>
             )}
 
             {centres.error && (
-              <p className="mt-2 text-xs text-red-500">{translateError(t, centres.error)}</p>
+              <p className="mt-2 text-xs text-black">{translateError(t, centres.error)}</p>
             )}
 
             {selectedCentre?.mandi && <MandiNote mandi={selectedCentre.mandi} />}
@@ -311,8 +311,8 @@ function BookSlot() {
               </div>
 
               <div>
-                <h2 className="font-semibold text-slate-900">{t("quantity")}</h2>
-                <p className="text-xs text-slate-500">{t("quantityDescription")}</p>
+                <h2 className="font-semibold text-black">{t("quantity")}</h2>
+                <p className="text-xs text-black">{t("quantityDescription")}</p>
               </div>
             </div>
 
@@ -333,11 +333,11 @@ function BookSlot() {
                 className={control}
               />
 
-              <span className="shrink-0 text-sm font-medium text-slate-500">{t("quintal")}</span>
+              <span className="shrink-0 text-sm font-semibold text-black">{t("quintal")}</span>
             </div>
 
             {}
-            <p className="mt-2 text-xs text-slate-400">
+            <p className="mt-2 text-xs text-black">
               {quantity
                 ? t("quantityRange", { min: quantity.minQuintal, max: quantity.maxQuintal })
                 : t("loading")}
@@ -352,8 +352,8 @@ function BookSlot() {
               </div>
 
               <div>
-                <h2 className="font-semibold text-slate-900">{t("preferredDate")}</h2>
-                <p className="text-xs text-slate-500">{t("preferredDateHelp")}</p>
+                <h2 className="font-semibold text-black">{t("preferredDate")}</h2>
+                <p className="text-xs text-black">{t("preferredDateHelp")}</p>
               </div>
             </div>
 
@@ -369,7 +369,7 @@ function BookSlot() {
             />
           </section>
 
-          {fieldError && <p className="text-sm text-red-600">{fieldError}</p>}
+          {fieldError && <p className="text-sm text-black">{fieldError}</p>}
 
           {error && <ErrorState error={error} />}
 
@@ -386,9 +386,9 @@ function BookSlot() {
       {}
       {offer && !offer.available && (
         <section className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <h3 className="font-semibold text-amber-900">{t("noAvailabilityTitle")}</h3>
+          <h3 className="font-semibold text-black">{t("noAvailabilityTitle")}</h3>
 
-          <p className="mt-1 text-sm leading-5 text-amber-800">
+          <p className="mt-1 text-sm leading-5 text-black">
             {translateReason(t, offer.reasonCode)}
           </p>
         </section>
@@ -397,20 +397,20 @@ function BookSlot() {
       {offer?.available && offer.window && (
         <section className="mt-4 overflow-hidden rounded-2xl border border-green-200 bg-white shadow-sm">
           <div className="bg-green-50 px-4 py-3">
-            <h3 className="font-semibold text-green-900">{t("earliestAvailableWindow")}</h3>
+            <h3 className="font-semibold text-black">{t("earliestAvailableWindow")}</h3>
           </div>
 
           <div className="divide-y divide-slate-100 px-4">
             <div className="flex items-center justify-between py-3">
-              <span className="text-sm text-slate-500">{t("date")}</span>
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-sm text-black">{t("date")}</span>
+              <span className="text-sm font-semibold text-black">
                 {formatDate(offer.window.serviceDate, offer.window.centreTimezone, locale)}
               </span>
             </div>
 
             <div className="flex items-center justify-between py-3">
-              <span className="text-sm text-slate-500">{t("arriveBy")}</span>
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-sm text-black">{t("arriveBy")}</span>
+              <span className="text-sm font-semibold text-black">
                 {formatTimeRange(
                   offer.window.scheduledStartAt,
                   offer.window.processingEndAt,
@@ -421,8 +421,8 @@ function BookSlot() {
             </div>
 
             <div className="flex items-center justify-between py-3">
-              <span className="text-sm text-slate-500">{t("processingTime")}</span>
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-sm text-black">{t("processingTime")}</span>
+              <span className="text-sm font-semibold text-black">
                 {formatMinutes(offer.window.processingMinutes, locale, {
                   hour: t("hoursShort"),
                   minute: t("minutesShort"),
@@ -431,14 +431,14 @@ function BookSlot() {
             </div>
 
             <div className="flex items-center justify-between py-3">
-              <span className="text-sm text-slate-500">{t("lane")}</span>
-              <span className="text-sm font-semibold text-slate-900">{offer.window.laneNo}</span>
+              <span className="text-sm text-black">{t("lane")}</span>
+              <span className="text-sm font-semibold text-black">{offer.window.laneNo}</span>
             </div>
           </div>
 
           {}
           {offer.storageCheck?.status === "NOT_AVAILABLE" && (
-            <p className="px-4 pb-2 text-xs text-slate-400">
+            <p className="px-4 pb-2 text-xs text-black">
               {translateReason(t, offer.storageCheck.reasonCode)}
             </p>
           )}
@@ -453,7 +453,7 @@ function BookSlot() {
               {booking ? t("confirmingBooking") : t("bookThisWindow")}
             </button>
 
-            <p className="mt-2 text-center text-xs text-slate-400">{t("windowNotHeldNote")}</p>
+            <p className="mt-2 text-center text-xs text-black">{t("windowNotHeldNote")}</p>
           </div>
         </section>
       )}

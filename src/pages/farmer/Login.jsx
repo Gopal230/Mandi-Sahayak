@@ -55,8 +55,8 @@ function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f3f5f3] text-slate-900">
-      <header className="bg-[#11a255] text-white">
+    <div className="min-h-screen bg-[#f3f5f3] text-black">
+      <header className="bg-[#0e8a48] text-white">
         <div className="mx-auto flex min-h-[72px] w-full max-w-[1280px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <button
             type="button"
@@ -72,8 +72,8 @@ function Login() {
                 {t("appName")}
               </span>
 
-              <span className="hidden text-xs font-medium text-white/80 sm:block">
-                Farmer Procurement Portal
+              <span className="hidden text-xs font-semibold text-white/80 sm:block">
+                {t("farmerProcurementPortal")}
               </span>
             </span>
           </button>
@@ -100,17 +100,16 @@ function Login() {
                 🌾
               </div>
 
-              <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
+              <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-black">
                 {t("farmer")} {t("login")}
               </p>
 
-              <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+              <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-black sm:text-3xl">
                 {t("welcome")}
               </h1>
 
-              <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500">
-                {t("enterMobileToContinue") ||
-                  "Enter your registered mobile number to continue to your Mandi Sahayak account."}
+              <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-black">
+                {t("enterMobileToContinue")}
               </p>
             </div>
 
@@ -131,7 +130,7 @@ function Login() {
               <div>
                 <label
                   htmlFor="phone"
-                  className="mb-2 block text-sm font-bold text-slate-700"
+                  className="mb-2 block text-sm font-bold text-black"
                 >
                   {t("mobileNumber")}
                 </label>
@@ -143,7 +142,7 @@ function Login() {
                       : "border-slate-200 focus-within:border-emerald-500"
                   }`}
                 >
-                  <span className="flex min-h-14 items-center border-r border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-600">
+                  <span className="flex min-h-14 items-center border-r border-slate-200 bg-slate-50 px-4 text-sm font-bold text-black">
                     +91
                   </span>
 
@@ -164,16 +163,16 @@ function Login() {
                       );
                       setFieldError(null);
                     }}
-                    className="min-h-14 min-w-0 flex-1 bg-white px-4 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                    className="min-h-14 min-w-0 flex-1 bg-white px-4 text-sm text-black outline-none placeholder:text-black"
                   />
                 </div>
 
                 {fieldError ? (
-                  <p className="mt-2 text-xs text-red-500">
+                  <p className="mt-2 text-xs text-black">
                     {fieldError}
                   </p>
                 ) : (
-                  <p className="mt-2 text-xs leading-5 text-slate-400">
+                  <p className="mt-2 text-xs leading-5 text-black">
                     {t("otpWillBeSent")}
                   </p>
                 )}
@@ -182,7 +181,7 @@ function Login() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="mt-6 flex min-h-14 w-full items-center justify-center rounded-xl bg-[#15803d] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#166534] disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.99]"
+                className="mt-6 flex min-h-14 w-full items-center justify-center rounded-xl bg-[#126d34] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#13562c] disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.99]"
               >
                 {submitting
                   ? t("sendingOtp")
@@ -193,7 +192,7 @@ function Login() {
             <div className="my-7 flex items-center gap-3">
               <div className="h-px flex-1 bg-slate-200" />
 
-              <span className="text-xs font-medium text-slate-400">
+              <span className="text-xs font-semibold text-black">
                 {t("noAccount")}
               </span>
 
@@ -203,29 +202,29 @@ function Login() {
             <button
               type="button"
               onClick={() => navigate("/register")}
-              className="flex min-h-12 w-full items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-5 text-sm font-bold text-[#15803d] transition hover:bg-emerald-100"
+              className="flex min-h-12 w-full items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-5 text-sm font-bold text-[#126d34] transition hover:bg-emerald-100"
             >
               {t("registerAsFarmer")}
             </button>
 
-            <p className="mt-5 text-center text-sm text-slate-500">
+            <p className="mt-5 text-center text-sm text-black">
               <button
                 type="button"
                 onClick={() => navigate("/staff-login")}
-                className="font-bold text-emerald-700 hover:underline"
+                className="font-bold text-black hover:underline"
               >
                 {t("staffLogin")}
               </button>
             </p>
 
             <div className="mt-7 border-t border-slate-100 pt-5 text-center">
-              <p className="text-xs leading-5 text-slate-400">
+              <p className="text-xs leading-5 text-black">
                 {t("secureProcurement")}
               </p>
             </div>
           </div>
 
-          <p className="mt-5 text-center text-xs font-medium text-slate-400">
+          <p className="mt-5 text-center text-xs font-semibold text-black">
             {t("secureProcurement")}
           </p>
         </section>

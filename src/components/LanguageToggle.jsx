@@ -23,8 +23,8 @@ export function LanguageToggle({ variant = "onColour" }) {
   // than rendering pale-on-green.
   const classes =
     variant === "onLight"
-      ? "border-slate-200 bg-slate-100 text-slate-700"
-      : "border-white/25 bg-white/15 text-white [&>option]:text-slate-900";
+      ? "border-slate-200 bg-slate-100 text-black"
+      : "border-white/25 bg-white/15 text-white [&>option]:text-black";
 
   const active = LANGUAGES.some((language) => language.code === i18n.language)
     ? i18n.language

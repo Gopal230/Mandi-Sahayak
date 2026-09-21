@@ -32,8 +32,8 @@ export class ErrorBoundary extends Component {
             ⚠️
           </div>
 
-          <h1 className="mt-4 text-lg font-bold text-slate-900">Something went wrong</h1>
-          <p className="mt-1 text-sm text-slate-500">कुछ गलत हो गया</p>
+          <h1 className="mt-4 text-lg font-bold text-black">Something went wrong</h1>
+          <p className="mt-1 text-sm text-black">कुछ गलत हो गया</p>
 
           <button
             type="button"

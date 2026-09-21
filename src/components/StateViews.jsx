@@ -15,7 +15,7 @@ export function Loading({ label }) {
         aria-label={text}
       />
 
-      <p className="text-sm text-slate-500">{text}</p>
+      <p className="text-sm text-black">{text}</p>
     </div>
   );
 }
@@ -40,9 +40,9 @@ export function ErrorState({ error, onRetry, className = "" }) {
         <span className="text-lg leading-none">⚠️</span>
 
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-red-800">{t("somethingWentWrong")}</p>
+          <p className="text-sm font-semibold text-black">{t("somethingWentWrong")}</p>
 
-          <p className="mt-1 text-sm leading-5 text-red-700">{translateError(t, error)}</p>
+          <p className="mt-1 text-sm leading-5 text-black">{translateError(t, error)}</p>
 
           {onRetry && (
             <button
@@ -67,9 +67,9 @@ export function EmptyState({ icon = "📭", title, description, action }) {
         {icon}
       </div>
 
-      <h2 className="mt-4 text-lg font-bold text-slate-900">{title}</h2>
+      <h2 className="mt-4 text-lg font-bold text-black">{title}</h2>
 
-      {description && <p className="mt-2 text-sm leading-5 text-slate-500">{description}</p>}
+      {description && <p className="mt-2 text-sm leading-5 text-black">{description}</p>}
 
       {action}
     </section>
@@ -77,10 +77,10 @@ export function EmptyState({ icon = "📭", title, description, action }) {
 }
 
 const TONE_CLASSES = {
-  success: "bg-green-100 text-green-800",
-  danger: "bg-red-100 text-red-800",
-  progress: "bg-amber-100 text-amber-800",
-  neutral: "bg-slate-100 text-slate-700",
+  success: "bg-green-100 text-black",
+  danger: "bg-red-100 text-black",
+  progress: "bg-amber-100 text-black",
+  neutral: "bg-slate-100 text-black",
 };
 
 /** One consistent badge for every status the server reports. */
@@ -107,7 +107,7 @@ export function DataTypeNote({ dataType }) {
   if (dataType !== "CONFIGURED") return null;
 
   return (
-    <p className="mt-2 text-xs leading-4 text-slate-400">ℹ️ {t("configuredDataNote")}</p>
+    <p className="mt-2 text-xs leading-4 text-black">ℹ️ {t("configuredDataNote")}</p>
   );
 }
 
@@ -125,9 +125,9 @@ export function MandiNote({ mandi }) {
   if (!mandi) return null;
 
   return (
-    <p className="mt-2 text-xs leading-4 text-slate-500">
+    <p className="mt-2 text-xs leading-4 text-black">
       🏛️ {t("mandiOfficial", { name: mandi.name, grade: mandi.grade })}
-      <span className="block text-slate-400">{mandi.publisher}</span>
+      <span className="block text-black">{mandi.publisher}</span>
     </p>
   );
 }
@@ -136,11 +136,11 @@ export function MandiNote({ mandi }) {
 export function DetailRow({ label, value, emphasis = false }) {
   return (
     <div className="flex items-start justify-between gap-4 py-3">
-      <span className="text-sm text-slate-500">{label}</span>
+      <span className="text-sm text-black">{label}</span>
 
       <span
         className={`text-right text-sm ${
-          emphasis ? "font-bold text-slate-900" : "font-semibold text-slate-800"
+          emphasis ? "font-bold text-black" : "font-semibold text-black"
         }`}
       >
         {value ?? "—"}

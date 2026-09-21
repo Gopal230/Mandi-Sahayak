@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+
+import { translateOfficerStatus } from "../../lib/officerStatus";
 
 const paymentStatusButtons = ["Pending", "Processing", "Cleared"];
 
@@ -8,6 +11,7 @@ const PaymentsPage = ({
   onPaymentStatusChange,
   selectedDate,
 }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [expandedId, setExpandedId] = useState(null);
   const [paymentReferences, setPaymentReferences] = useState({});
@@ -73,7 +77,9 @@ const PaymentsPage = ({
     if (status === "Cleared" && currentStatus !== "Processing") {
       setTransitionErrors((current) => ({
         ...current,
-        [id]: "Move this payment to Processing before marking it cleared.",
+        [id]: t("moveToProcessingFirst", {
+          status: translateOfficerStatus(t, "Processing"),
+        }),
       }));
       return;
     }
@@ -83,7 +89,7 @@ const PaymentsPage = ({
     if (status === "Cleared" && !paymentReference) {
       setReferenceErrors((current) => ({
         ...current,
-        [id]: "Enter the transfer reference before clearing this payment.",
+        [id]: t("enterTransferReferenceFirst"),
       }));
       return;
     }
@@ -106,23 +112,22 @@ const PaymentsPage = ({
     <div className="rounded-3xl border border-emerald-200 bg-white p-4 shadow-sm shadow-emerald-200/30 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
-            Payments overview
+          <h2 className="text-xl font-bold text-black sm:text-2xl">
+            {t("paymentsOverview")}
           </h2>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-            {selectedDate ?? "Today"}
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-black">
+            {selectedDate ?? t("officerToday")}
           </p>
         </div>
-        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-800">
-          {activePayments.length} settlement
-          {activePayments.length === 1 ? "" : "s"}
+        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-black">
+          {t("settlementCount", { count: activePayments.length })}
         </span>
       </div>
 
       <div className="mt-6 space-y-3">
         {activePayments.length === 0 ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-slate-700">
-            No payment entries yet for this date.
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-black">
+            {t("noPaymentEntriesDate")}
           </div>
         ) : (
           activePayments.map((entry) => {
@@ -144,22 +149,22 @@ const PaymentsPage = ({
                   className="flex w-full items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-white px-3 py-3 text-left"
                 >
                   <div>
-                    <p className="text-lg font-bold text-slate-900">
+                    <p className="text-lg font-bold text-black">
                       {entry.name}
                     </p>
-                    <p className="text-sm text-slate-600">
+                    <p className="text-sm text-black">
                       {entry.date || selectedDate} • {entry.crop} • {entry.slot}
                     </p>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="text-lg font-bold text-slate-900">
+                    <span className="text-lg font-bold text-black">
                       ₹
                       {Number(entry.paidAmount || payable || 0).toLocaleString(
                         "en-IN",
                       )}
                     </span>
-                    <span className="text-lg text-emerald-700">
+                    <span className="text-lg text-black">
                       {isExpanded ? "▴" : "▾"}
                     </span>
                   </div>
@@ -169,26 +174,26 @@ const PaymentsPage = ({
                   <div className="mt-4 rounded-2xl border border-emerald-200 bg-white p-4">
                     <div className="grid gap-3 sm:grid-cols-3">
                       <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
-                          Actual weight
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black">
+                          {t("actualWeightLabel")}
                         </p>
-                        <p className="mt-1 font-bold text-slate-900">
-                          {actualWeight} quintal
+                        <p className="mt-1 font-bold text-black">
+                          {actualWeight} {t("quintal")}
                         </p>
                       </div>
                       <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
-                          MSP rate
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black">
+                          {t("mspRateLabel")}
                         </p>
-                        <p className="mt-1 font-bold text-slate-900">
+                        <p className="mt-1 font-bold text-black">
                           ₹{rate.toLocaleString("en-IN")}
                         </p>
                       </div>
                       <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
-                          Payable amount
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black">
+                          {t("payableAmount")}
                         </p>
-                        <p className="mt-1 font-bold text-slate-900">
+                        <p className="mt-1 font-bold text-black">
                           ₹{payable.toLocaleString("en-IN")}
                         </p>
                       </div>
@@ -210,10 +215,11 @@ const PaymentsPage = ({
                               "min-w-27.5 rounded-full border px-5 py-2.5 text-sm font-semibold transition",
                               isActive
                                 ? "border-green-700 bg-green-700 text-white"
-                                : "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100",
+                                : "border-emerald-200 bg-emerald-50 text-black hover:bg-emerald-100",
                             ].join(" ")}
                           >
-                            {status === "Cleared" ? "✅" : "⏳"} {status}
+                            {status === "Cleared" ? "✅" : "⏳"}{" "}
+                            {translateOfficerStatus(t, status)}
                           </button>
                         );
                       })}
@@ -222,9 +228,9 @@ const PaymentsPage = ({
                     <div className="mt-4">
                       <label
                         htmlFor={`payment-reference-${entry.id}`}
-                        className="block text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700"
+                        className="block text-xs font-semibold uppercase tracking-[0.12em] text-black"
                       >
-                        Payment reference / cash receipt number
+                        {t("paymentReferenceLabel")}
                       </label>
                       <input
                         id={`payment-reference-${entry.id}`}
@@ -244,17 +250,17 @@ const PaymentsPage = ({
                             });
                           })()
                         }
-                        placeholder="Enter UTR or cash receipt number"
-                        className="mt-2 min-h-11 w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50"
+                        placeholder={t("enterUtrOrCashReceipt")}
+                        className="mt-2 min-h-11 w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm text-black outline-none transition placeholder:text-black focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50"
                       />
                       <p
-                        className={`mt-1 text-xs ${referenceErrors[entry.id] ? "font-semibold text-red-600" : "text-slate-500"}`}
+                        className={`mt-1 text-xs ${referenceErrors[entry.id] ? "font-semibold text-black" : "text-black"}`}
                       >
                         {referenceErrors[entry.id] ??
-                          "Required before marking this payment cleared."}
+                          t("requiredBeforeClearing")}
                       </p>
                       {transitionErrors[entry.id] && (
-                        <p className="mt-1 text-xs font-semibold text-red-600">
+                        <p className="mt-1 text-xs font-semibold text-black">
                           {transitionErrors[entry.id]}
                         </p>
                       )}
@@ -269,8 +275,8 @@ const PaymentsPage = ({
 
       {clearedPayments.length > 0 && (
         <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
-          <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-emerald-800">
-            Cleared payments
+          <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-black">
+            {t("clearedPaymentsHeading")}
           </h3>
           <div className="mt-3 space-y-2">
             {clearedPayments.map((entry) => (
@@ -279,14 +285,14 @@ const PaymentsPage = ({
                 className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-white px-3 py-2"
               >
                 <div>
-                  <p className="font-bold text-slate-900">{entry.name}</p>
-                  <p className="text-xs text-slate-600">
+                  <p className="font-bold text-black">{entry.name}</p>
+                  <p className="text-xs text-black">
                     {entry.crop} • ₹
                     {Number(entry.paidAmount || 0).toLocaleString("en-IN")}
                   </p>
                 </div>
-                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-800">
-                  Cleared
+                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black">
+                  {t("cleared")}
                 </span>
               </div>
             ))}

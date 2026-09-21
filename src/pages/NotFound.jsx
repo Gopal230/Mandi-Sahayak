@@ -15,9 +15,9 @@ export function NotFound() {
           🧭
         </div>
 
-        <h1 className="mt-5 text-xl font-bold text-slate-900">{t("pageNotFound")}</h1>
+        <h1 className="mt-5 text-xl font-bold text-black">{t("pageNotFound")}</h1>
 
-        <p className="mt-2 text-sm leading-5 text-slate-500">{t("pageNotFoundDescription")}</p>
+        <p className="mt-2 text-sm leading-5 text-black">{t("pageNotFoundDescription")}</p>
 
         <button
           type="button"

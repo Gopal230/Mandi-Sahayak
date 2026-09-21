@@ -27,7 +27,7 @@ function LanguageSelect() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f3f5f3]">
-      <header className="bg-[#11a255] text-white">
+      <header className="bg-[#0e8a48] text-white">
         <div className="mx-auto flex min-h-[72px] w-full max-w-[1280px] items-center gap-3 px-4 sm:px-6 lg:px-8">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-xl">
             🌾
@@ -39,19 +39,19 @@ function LanguageSelect() {
 
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10 sm:px-6">
         <div className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-black">
             {t("step1Of2")}
           </p>
 
-          <h1 className="mt-3 text-2xl font-extrabold text-slate-900">
+          <h1 className="mt-3 text-2xl font-extrabold text-black">
             {t("chooseLanguage")}
           </h1>
 
           {/* Shown in English as well as the active language, because this is
               the one screen where the active language may be unreadable. */}
-          <p className="mt-2 text-sm leading-6 text-slate-500">
+          <p className="mt-2 text-sm leading-6 text-black">
             {t("chooseLanguageDescription")}
-            <span className="mt-1 block text-slate-400">Select your language to continue</span>
+            <span className="mt-1 block text-black">Select your language to continue</span>
           </p>
 
           <ul className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -67,15 +67,15 @@ function LanguageSelect() {
                     aria-pressed={selected}
                     className={`w-full rounded-xl border-2 px-3 py-4 text-center transition ${
                       selected
-                        ? "border-[#11a255] bg-emerald-50"
+                        ? "border-[#0e8a48] bg-emerald-50"
                         : "border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/40"
                     }`}
                   >
-                    <span className="block text-base font-bold text-slate-900">
+                    <span className="block text-base font-bold text-black">
                       {language.nativeName}
                     </span>
 
-                    <span className="mt-0.5 block text-xs font-medium text-slate-400">
+                    <span className="mt-0.5 block text-xs font-semibold text-black">
                       {language.englishName}
                     </span>
                   </button>
@@ -87,12 +87,12 @@ function LanguageSelect() {
           <button
             type="button"
             onClick={() => navigate("/portal")}
-            className="mt-8 w-full rounded-xl bg-[#11a255] py-3.5 text-sm font-bold text-white transition hover:bg-[#0e8b49]"
+            className="mt-8 w-full rounded-xl bg-[#0e8a48] py-3.5 text-sm font-bold text-white transition hover:bg-[#0c763e]"
           >
             {t("continue")} →
           </button>
 
-          <p className="mt-4 text-center text-xs text-slate-400">
+          <p className="mt-4 text-center text-xs text-black">
             {t("languageChangeableLater")}
           </p>
         </div>

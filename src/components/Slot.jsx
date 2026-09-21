@@ -1,6 +1,10 @@
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+
+import { translateOfficerStatus } from "../lib/officerStatus";
 
 export const Slot = ({ farmer, onMarkArrived, isHighlighted = false }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const cardClass = isHighlighted
     ? "border-emerald-400 bg-emerald-50 shadow-emerald-200/60"
@@ -14,18 +18,18 @@ export const Slot = ({ farmer, onMarkArrived, isHighlighted = false }) => {
   const getActionLabel = () => {
     switch (farmer.status) {
       case "Queued":
-        return "🚶 Arrived";
+        return `🚶 ${t("arrived")}`;
       case "Arrived":
       case "Weighing":
       case "Quality check":
       case "Recorded":
-        return "⚖️ Weigh";
+        return `⚖️ ${t("actionWeigh")}`;
       case "Awaiting payment":
-        return "💸 Pay";
+        return `💸 ${t("actionPay")}`;
       case "Cleared":
-        return "✅ Done";
+        return `✅ ${t("actionDone")}`;
       default:
-        return "🚶 Arrived";
+        return `🚶 ${t("arrived")}`;
     }
   };
 
@@ -57,56 +61,56 @@ export const Slot = ({ farmer, onMarkArrived, isHighlighted = false }) => {
     >
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-lg font-black text-slate-900">{farmer.name}</p>
-          <p className="text-sm text-slate-600">
+          <p className="text-lg font-black text-black">{farmer.name}</p>
+          <p className="text-sm text-black">
             {farmer.token}
-            {farmer.laneNo ? ` • Lane ${farmer.laneNo}` : ""}
+            {farmer.laneNo ? ` • ${t("lane")} ${farmer.laneNo}` : ""}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-emerald-800">
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-black">
             {farmer.crop}
           </span>
           <span className="rounded-full border border-lime-200 bg-lime-50 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-lime-800">
-            {farmer.status}
+            {translateOfficerStatus(t, farmer.status)}
           </span>
           {isLate && (
-            <span className="rounded-full border border-red-300 bg-red-100 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-red-700">
-              ⏰ Late
+            <span className="rounded-full border border-red-300 bg-red-100 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black">
+              ⏰ {t("late")}
             </span>
           )}
         </div>
       </div>
 
       <div className="mt-3 grid gap-3 md:grid-cols-2">
-        <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
-          Slot time
+        <label className="text-xs font-semibold uppercase tracking-[0.14em] text-black">
+          {t("slotTime")}
           <div
             className={[
-              "mt-1 w-full rounded-xl border px-2 py-2 text-sm font-medium",
+              "mt-1 w-full rounded-xl border px-2 py-2 text-sm font-semibold",
               isLate
-                ? "border-red-300 bg-red-50 text-red-700"
-                : "border-emerald-200 bg-emerald-50 text-slate-900",
+                ? "border-red-300 bg-red-50 text-black"
+                : "border-emerald-200 bg-emerald-50 text-black",
             ].join(" ")}
           >
-            {farmer.slot || "N/A"}
+            {farmer.slot || t("notAvailableShort")}
           </div>
         </label>
 
-        <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
-          Qty (quintal)
-          <div className="mt-1 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm font-medium text-slate-900">
-            {farmer.quantity || "N/A"}
+        <label className="text-xs font-semibold uppercase tracking-[0.14em] text-black">
+          {t("quantityInQuintal")}
+          <div className="mt-1 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm font-semibold text-black">
+            {farmer.quantity || t("notAvailableShort")}
           </div>
         </label>
       </div>
 
       <div className="mt-3 grid gap-3 md:grid-cols-2">
-        <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
-          Phone
-          <div className="mt-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm font-medium text-slate-900">
-            {farmer.phone || "N/A"}
+        <label className="text-xs font-semibold uppercase tracking-[0.14em] text-black">
+          {t("phone")}
+          <div className="mt-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm font-semibold text-black">
+            {farmer.phone || t("notAvailableShort")}
           </div>
         </label>
 

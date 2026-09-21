@@ -104,7 +104,7 @@ function Payment() {
         <div className="mb-4">
           <label
             htmlFor="bookingSelect"
-            className="block text-sm font-medium text-slate-700"
+            className="block text-sm font-semibold text-black"
           >
             {t("selectBooking")}
           </label>
@@ -190,11 +190,11 @@ function Payment() {
 
           {blocked && (
             <section className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <h2 className="font-semibold text-amber-900">
+              <h2 className="font-semibold text-black">
                 {t("paymentBlockedTitle")}
               </h2>
 
-              <p className="mt-1 text-sm leading-5 text-amber-800">
+              <p className="mt-1 text-sm leading-5 text-black">
                 {translatePaymentBlocked(
                   t,
                   payment.blockedReason,
@@ -204,7 +204,7 @@ function Payment() {
           )}
 
           <section className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
-            <h2 className="font-semibold text-slate-900">
+            <h2 className="font-semibold text-black">
               {t("paymentInformation")}
             </h2>
 
@@ -274,7 +274,7 @@ function Payment() {
             </div>
           </section>
 
-          <p className="mt-4 rounded-xl bg-slate-100 p-3 text-xs leading-4 text-slate-500">
+          <p className="mt-4 rounded-xl bg-slate-100 p-3 text-xs leading-4 text-black">
             ℹ️ {t("noDisbursalNote")}
           </p>
 
@@ -285,7 +285,7 @@ function Payment() {
                 state: { bookingCode },
               })
             }
-            className="mt-4 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-green-200 hover:bg-green-50 hover:text-green-700"
+            className="mt-4 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-black transition hover:border-green-200 hover:bg-green-50 hover:text-black"
           >
             {t("viewProcurementStatus")}
           </button>

@@ -52,14 +52,19 @@ async function ready() {
   });
 }
 
-/** The consent checkbox is the last checkbox in the form; crops come first. */
-function consentCheckbox() {
-  const boxes = screen.getAllByRole("checkbox");
-  return boxes[boxes.length - 1];
+const consentCheckbox = () => screen.getByRole("checkbox", { name: /confirm/i });
+
+/** Ticks the checkbox for the named crop, opening the dropdown if needed. */
+async function pickCrop(user, cropName) {
+  if (!screen.queryByRole("checkbox", { name: cropName })) {
+    await user.click(await screen.findByRole("button", { name: "Crops Accepted" }));
+  }
+  await user.click(await screen.findByRole("checkbox", { name: cropName }));
 }
 
 describe("/staff-register — District -> Centre, crops independent", () => {
   it("keeps the centre shut until a district is chosen, and lists the full crop catalog regardless", async () => {
+    const user = userEvent.setup();
     mockApi(routes());
 
     renderBare(<OfficerRegistration />, { route: "/staff-register" });
@@ -68,9 +73,11 @@ describe("/staff-register — District -> Centre, crops independent", () => {
     expect(box("Procurement Centre")).toBeDisabled();
     expect(options("Procurement Centre")).toEqual(["Select a district first"]);
 
+    await user.click(await screen.findByRole("button", { name: "Crops Accepted" }));
+
     await waitFor(() => {
-      expect(screen.getByText("Wheat")).toBeInTheDocument();
-      expect(screen.getByText("Paddy")).toBeInTheDocument();
+      expect(screen.getByRole("checkbox", { name: "Wheat" })).toBeInTheDocument();
+      expect(screen.getByRole("checkbox", { name: "Paddy" })).toBeInTheDocument();
     });
   });
 
@@ -117,19 +124,17 @@ describe("/staff-register — District -> Centre, crops independent", () => {
     renderBare(<OfficerRegistration />, { route: "/staff-register" });
     await ready();
 
-    await waitFor(() => expect(screen.getByText("Paddy")).toBeInTheDocument());
-    await user.click(screen.getByText("Paddy"));
+    await pickCrop(user, "Paddy");
 
     await user.selectOptions(box("District"), ALIGARH);
     await waitFor(() => expect(box("Procurement Centre")).toBeEnabled());
     await user.selectOptions(box("Procurement Centre"), registrationCentres[0].id);
 
-    // Switching district/centre never touched the crop checkboxes.
-    const paddyCheckbox = screen.getByText("Paddy").closest("label").querySelector("input");
-    expect(paddyCheckbox).toBeChecked();
+    // Switching district/centre never touched the crop selection.
+    expect(screen.getByRole("checkbox", { name: "Paddy" })).toBeChecked();
 
     await user.selectOptions(box("District"), AGRA);
-    expect(paddyCheckbox).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Paddy" })).toBeChecked();
   });
 
   it("submits multiple crop ids alongside district and centre", async () => {
@@ -145,9 +150,8 @@ describe("/staff-register — District -> Centre, crops independent", () => {
     await waitFor(() => expect(box("Procurement Centre")).toBeEnabled());
     await user.selectOptions(box("Procurement Centre"), registrationCentres[0].id);
 
-    await waitFor(() => expect(screen.getByText("Wheat")).toBeInTheDocument());
-    await user.click(screen.getByText("Wheat"));
-    await user.click(screen.getByText("Paddy"));
+    await pickCrop(user, "Wheat");
+    await pickCrop(user, "Paddy");
 
     await user.type(screen.getByLabelText("Full name"), "Valid Officer");
     await user.type(screen.getByLabelText("Mobile Number"), "9812345678");

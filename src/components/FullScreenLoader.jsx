@@ -7,7 +7,7 @@ export function FullScreenLoader({ label }) {
         aria-label={label}
       />
 
-      {label && <p className="text-sm text-slate-500">{label}</p>}
+      {label && <p className="text-sm text-black">{label}</p>}
     </div>
   );
 }

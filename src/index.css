@@ -1,12 +1,37 @@
 @import "tailwindcss";
 
+/* A touch darker than Tailwind's stock shades — the defaults ran too bright
+   against the rest of the UI's neutral black/white text. */
+@theme {
+  --color-emerald-50: #e3f3e9;
+  --color-emerald-100: #c9e6d3;
+  --color-emerald-200: #a3d3b5;
+  --color-emerald-300: #7ebd94;
+  --color-emerald-400: #2cb382;
+  --color-emerald-500: #0e9d6e;
+
+  --color-green-50: #e6f3e6;
+  --color-green-100: #cde8cd;
+  --color-green-200: #a9d4a9;
+  --color-green-300: #85be85;
+
+  --color-lime-50: #eef3e0;
+  --color-lime-100: #dbe8be;
+  --color-lime-200: #c0d69a;
+  --color-lime-800: #445c2e;
+
+  --color-red-400: #d36060;
+  --color-red-500: #cb3a3a;
+  --color-amber-500: #d0860a;
+}
+
 :root {
-  --fq-green: #11a255;
-  --fq-green-dark: #15803d;
-  --fq-green-deep: #166534;
-  --fq-green-soft: #ecfdf5;
-  --fq-green-softer: #f4fbf7;
-  --fq-green-border: #a7f3d0;
+  --fq-green: #0e8a48;
+  --fq-green-dark: #126d34;
+  --fq-green-deep: #13562c;
+  --fq-green-soft: #e6f3e6;
+  --fq-green-softer: #eef6ee;
+  --fq-green-border: #8ecfb1;
   --fq-page: #f3f5f3;
   --fq-surface: #fafafa;
   --fq-text: #1b1a18;
@@ -21,8 +46,8 @@
   --fq-radius-md: 18px;
   --fq-radius-lg: 24px;
   --fq-radius-xl: 28px;
-  --fq-shadow-sm: 0 4px 16px rgba(167, 243, 208, 0.35);
-  --fq-shadow-md: 0 10px 30px rgba(167, 243, 208, 0.45);
+  --fq-shadow-sm: 0 4px 16px rgba(142, 207, 177, 0.35);
+  --fq-shadow-md: 0 10px 30px rgba(142, 207, 177, 0.45);
 }
 
 html {
@@ -86,15 +111,7 @@ svg {
 }
 
 .bg-green-600 {
-  background-color: #16a85b !important;
-}
-
-.text-green-700 {
-  color: var(--fq-green-dark) !important;
-}
-
-.text-green-100 {
-  color: #dff6e8 !important;
+  background-color: #138f4d !important;
 }
 
 .bg-green-700:hover,

@@ -61,8 +61,8 @@ function OfficerLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f3f5f3] text-slate-900">
-      <header className="bg-[#11a255] text-white">
+    <div className="min-h-screen bg-[#f3f5f3] text-black">
+      <header className="bg-[#0e8a48] text-white">
         <div className="mx-auto flex min-h-[72px] w-full max-w-[1280px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <button
             type="button"
@@ -78,7 +78,7 @@ function OfficerLogin() {
                 {t("appName")}
               </span>
 
-              <span className="hidden text-xs font-medium text-white/80 sm:block">
+              <span className="hidden text-xs font-semibold text-white/80 sm:block">
                 {t("staffPortal")}
               </span>
             </span>
@@ -90,7 +90,7 @@ function OfficerLogin() {
             <button
               type="button"
               onClick={() => navigate("/login")}
-              className="rounded-full border border-white/30 bg-white px-4 py-2 text-sm font-bold text-[#15803d] transition hover:bg-white/90"
+              className="rounded-full border border-white/30 bg-white px-4 py-2 text-sm font-bold text-[#126d34] transition hover:bg-white/90"
             >
               {t("farmerLogin")}
             </button>
@@ -106,15 +106,15 @@ function OfficerLogin() {
                 🏛️
               </div>
 
-              <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
+              <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-black">
                 {t("staffLogin")}
               </p>
 
-              <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+              <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-black sm:text-3xl">
                 {t("welcomeBack")}
               </h1>
 
-              <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500">
+              <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-black">
                 {t("enterMobileToContinue") ||
                   "Use your registered mobile number to receive an OTP."}
               </p>
@@ -130,13 +130,13 @@ function OfficerLogin() {
               <div>
                 <label
                   htmlFor="phone"
-                  className="mb-2 block text-sm font-bold text-slate-700"
+                  className="mb-2 block text-sm font-bold text-black"
                 >
                   {t("mobileNumber")}
                 </label>
 
                 <div className="flex overflow-hidden rounded-xl border border-slate-200 bg-white focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-50">
-                  <span className="flex min-h-13 items-center border-r border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-600">
+                  <span className="flex min-h-13 items-center border-r border-slate-200 bg-slate-50 px-4 text-sm font-bold text-black">
                     +91
                   </span>
                   <input
@@ -157,41 +157,41 @@ function OfficerLogin() {
                   />
                 </div>
                 {fieldError && (
-                  <p className="mt-2 text-xs text-red-500">{fieldError}</p>
+                  <p className="mt-2 text-xs text-black">{fieldError}</p>
                 )}
               </div>
 
               <button
                 type="submit"
                 disabled={submitting}
-                className="min-h-13 w-full rounded-xl bg-[#11a255] text-sm font-bold text-white transition hover:bg-[#0e8b49] disabled:cursor-not-allowed disabled:bg-emerald-300"
+                className="min-h-13 w-full rounded-xl bg-[#0e8a48] text-sm font-bold text-white transition hover:bg-[#0c763e] disabled:cursor-not-allowed disabled:bg-emerald-300"
               >
                 {submitting ? t("verifying") : `${t("continueToOtp")} →`}
               </button>
 
-              <p className="mt-3 text-center text-xs leading-5 text-slate-400">
+              <p className="mt-3 text-center text-xs leading-5 text-black">
                 {t("otpWillBeSent")}
               </p>
             </form>
 
             <div className="mt-7 border-t border-slate-100 pt-5 text-center">
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-black">
                 {t("noOfficerAccount")}{" "}
                 <button
                   type="button"
                   onClick={() => navigate("/staff-register")}
-                  className="font-bold text-emerald-700 hover:underline"
+                  className="font-bold text-black hover:underline"
                 >
                   {t("applyForAccount")}
                 </button>
               </p>
 
-              <p className="mt-3 text-sm text-slate-500">
+              <p className="mt-3 text-sm text-black">
                 {t("areYouFarmer")}{" "}
                 <button
                   type="button"
                   onClick={() => navigate("/login")}
-                  className="font-bold text-emerald-700 hover:underline"
+                  className="font-bold text-black hover:underline"
                 >
                   {t("farmerLogin")}
                 </button>

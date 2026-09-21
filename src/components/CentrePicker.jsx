@@ -16,7 +16,7 @@ export function CentrePicker({ centre }) {
       value={centre.centreId ?? ""}
       onChange={(event) => centre.select(event.target.value)}
       aria-label={t("procurementCentre")}
-      className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-600"
+      className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-black outline-none focus:border-emerald-600"
     >
       {centre.centres.map((item) => (
         <option key={item.id} value={item.id}>

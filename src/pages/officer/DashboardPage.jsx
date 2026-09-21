@@ -1,4 +1,7 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { translateOfficerStatus } from "../../lib/officerStatus";
 
 const defaultCropChoices = ["Wheat", "Rice", "Mustard", "Gram"];
 
@@ -9,6 +12,7 @@ const DashboardPage = ({
   onSaveMorningSetup,
   storage = [],
 }) => {
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     weighbridgeWorking: true,
     slotsOpen: 6,
@@ -118,16 +122,18 @@ const DashboardPage = ({
 
   const summary = [
     {
-      label: "Weighbridge",
-      value: form.weighbridgeWorking ? "Operational" : "Closed",
+      key: "weighbridge",
+      label: t("weighbridge"),
+      value: form.weighbridgeWorking ? t("operational") : t("closed"),
       tone: form.weighbridgeWorking
-        ? "bg-emerald-100 text-emerald-900"
-        : "bg-red-100 text-red-700",
+        ? "bg-emerald-100 text-black"
+        : "bg-red-100 text-black",
     },
     {
-      label: "Total slots today",
-      value: `${form.slotsOpen} slots`,
-      tone: "bg-emerald-50 text-emerald-900",
+      key: "totalSlots",
+      label: t("totalSlotsLabel"),
+      value: t("slotsCount", { count: form.slotsOpen }),
+      tone: "bg-emerald-50 text-black",
     },
   ];
 
@@ -135,11 +141,11 @@ const DashboardPage = ({
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-            Dashboard
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black">
+            {t("dashboard")}
           </p>
-          <h2 className="text-2xl font-black text-slate-900 sm:text-3xl">
-            Procurement center overview
+          <h2 className="text-2xl font-black text-black sm:text-3xl">
+            {t("procurementCenterOverview")}
           </h2>
         </div>
         <button
@@ -154,20 +160,20 @@ const DashboardPage = ({
           }
           className="rounded-full bg-green-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-800"
         >
-          🔄 Refresh dashboard
+          🔄 {t("refreshDashboard")}
         </button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
         {summary.map((item) => (
           <div
-            key={item.label}
+            key={item.key}
             className={`rounded-2xl border border-emerald-200 p-4 ${item.tone}`}
           >
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">
               {item.label}
             </p>
-            {item.label === "Weighbridge" ? (
+            {item.key === "weighbridge" ? (
               <select
                 value={form.weighbridgeWorking ? "working" : "closed"}
                 onChange={(event) =>
@@ -176,10 +182,10 @@ const DashboardPage = ({
                     weighbridgeWorking: event.target.value === "working",
                   }))
                 }
-                className="mt-2 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-lg font-black text-slate-900 outline-none"
+                className="mt-2 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-lg font-black text-black outline-none"
               >
-                <option value="working">Operational</option>
-                <option value="closed">Closed</option>
+                <option value="working">{t("operational")}</option>
+                <option value="closed">{t("closed")}</option>
               </select>
             ) : (
               <p className="mt-2 text-2xl font-black">{item.value}</p>
@@ -191,18 +197,18 @@ const DashboardPage = ({
       <div className="rounded-[26px] border border-emerald-200 bg-emerald-50/60 p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-              Today’s shift
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black">
+              {t("todaysShift")}
             </p>
-            <h3 className="mt-2 text-lg font-bold text-slate-900">
-              Shift timing
+            <h3 className="mt-2 text-lg font-bold text-black">
+              {t("shiftTiming")}
             </h3>
           </div>
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <label className="space-y-2 text-sm font-semibold text-slate-700">
-            Shift start
+          <label className="space-y-2 text-sm font-semibold text-black">
+            {t("shiftStartLabel")}
             <input
               type="time"
               value={form.shiftStart}
@@ -212,12 +218,12 @@ const DashboardPage = ({
                   shiftStart: event.target.value,
                 }))
               }
-              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none"
+              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-semibold text-black outline-none"
             />
           </label>
 
-          <label className="space-y-2 text-sm font-semibold text-slate-700">
-            Shift end
+          <label className="space-y-2 text-sm font-semibold text-black">
+            {t("shiftEndLabel")}
             <input
               type="time"
               value={form.shiftEnd}
@@ -227,7 +233,7 @@ const DashboardPage = ({
                   shiftEnd: event.target.value,
                 }))
               }
-              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none"
+              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-semibold text-black outline-none"
             />
           </label>
         </div>
@@ -236,39 +242,39 @@ const DashboardPage = ({
       <div className="rounded-[26px] border border-emerald-200 bg-emerald-50/60 p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-              Slot availability
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black">
+              {t("slotAvailability")}
             </p>
-            <h3 className="mt-2 text-lg font-bold text-slate-900">
-              Live capacity overview
+            <h3 className="mt-2 text-lg font-bold text-black">
+              {t("liveCapacityOverview")}
             </h3>
           </div>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <div className="rounded-2xl border border-emerald-200 bg-white p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
-              Available
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black">
+              {t("available")}
             </p>
-            <p className="mt-2 text-3xl font-black text-slate-900">
+            <p className="mt-2 text-3xl font-black text-black">
               {availableSlots}
             </p>
           </div>
 
           <div className="rounded-2xl border border-emerald-200 bg-white p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
-              Booked
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black">
+              {t("booked")}
             </p>
-            <p className="mt-2 text-3xl font-black text-slate-900">
+            <p className="mt-2 text-3xl font-black text-black">
               {activeFarmers.length}
             </p>
           </div>
 
           <div className="rounded-2xl border border-emerald-200 bg-white p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
-              Total capacity
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black">
+              {t("totalCapacity")}
             </p>
-            <p className="mt-2 text-3xl font-black text-slate-900">
+            <p className="mt-2 text-3xl font-black text-black">
               {form.slotsOpen}
             </p>
           </div>
@@ -278,11 +284,11 @@ const DashboardPage = ({
       <div className="rounded-[26px] border border-emerald-200 bg-emerald-50/60 p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-              Farmer lookup
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black">
+              {t("farmerLookup")}
             </p>
-            <h3 className="mt-2 text-lg font-bold text-slate-900">
-              Quick search
+            <h3 className="mt-2 text-lg font-bold text-black">
+              {t("quickSearch")}
             </h3>
           </div>
         </div>
@@ -294,15 +300,15 @@ const DashboardPage = ({
             onKeyDown={(event) => {
               if (event.key === "Enter") handleDashboardSearch();
             }}
-            placeholder="Enter token number or phone"
-            className="flex-1 rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none"
+            placeholder={t("enterTokenOrPhone")}
+            className="flex-1 rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm text-black outline-none"
           />
           <button
             type="button"
             onClick={handleDashboardSearch}
             className="rounded-full bg-green-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-800"
           >
-            🔍 Search
+            🔍 {t("search")}
           </button>
         </div>
 
@@ -310,47 +316,47 @@ const DashboardPage = ({
           <div className="mt-4 rounded-2xl border border-emerald-200 bg-white p-4">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
-                  Farmer found
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black">
+                  {t("farmerFound")}
                 </p>
-                <p className="mt-1 text-lg font-black text-slate-900">
+                <p className="mt-1 text-lg font-black text-black">
                   {dashboardFarmer.name}
                 </p>
               </div>
-              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-emerald-800">
+              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-black">
                 {dashboardFarmer.token}
               </span>
             </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
-                  Crop
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black">
+                  {t("crop")}
                 </p>
-                <p className="mt-1 font-bold text-slate-900">
+                <p className="mt-1 font-bold text-black">
                   {dashboardFarmer.crop}
                 </p>
               </div>
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
-                  Status
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black">
+                  {t("statusLabel")}
                 </p>
-                <p className="mt-1 font-bold text-slate-900">
-                  {dashboardFarmer.status}
+                <p className="mt-1 font-bold text-black">
+                  {translateOfficerStatus(t, dashboardFarmer.status)}
                 </p>
               </div>
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
-                  Phone
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black">
+                  {t("phone")}
                 </p>
-                <p className="mt-1 font-bold text-slate-900">
-                  {dashboardFarmer.phone || "N/A"}
+                <p className="mt-1 font-bold text-black">
+                  {dashboardFarmer.phone || t("notAvailableShort")}
                 </p>
               </div>
             </div>
           </div>
         ) : dashboardSearch ? (
-          <div className="mt-4 rounded-2xl border border-dashed border-emerald-200 bg-white p-4 text-sm text-slate-700">
-            No farmer found for this token or phone number.
+          <div className="mt-4 rounded-2xl border border-dashed border-emerald-200 bg-white p-4 text-sm text-black">
+            {t("noFarmerFoundTokenPhone")}
           </div>
         ) : null}
       </div>
@@ -358,24 +364,24 @@ const DashboardPage = ({
       <div className="rounded-[26px] border border-emerald-200 bg-white p-5 shadow-sm shadow-emerald-200/30">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-              Storage overview
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black">
+              {t("storageOverview")}
             </p>
-            <h3 className="mt-2 text-lg font-bold text-slate-900">
-              Crop-wise storage summary
+            <h3 className="mt-2 text-lg font-bold text-black">
+              {t("cropWiseStorageSummary")}
             </h3>
           </div>
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-emerald-200">
           <table className="min-w-full divide-y divide-emerald-200 text-left text-sm">
-            <thead className="bg-emerald-50 text-emerald-900">
+            <thead className="bg-emerald-50 text-black">
               <tr>
-                <th className="px-3 py-2 font-bold">Crop</th>
-                <th className="px-3 py-2 font-bold">MSP</th>
-                <th className="px-3 py-2 font-bold">Total capacity</th>
-                <th className="px-3 py-2 font-bold">Available space</th>
-                <th className="px-3 py-2 font-bold">Filled</th>
+                <th className="px-3 py-2 font-bold">{t("crop")}</th>
+                <th className="px-3 py-2 font-bold">{t("msp")}</th>
+                <th className="px-3 py-2 font-bold">{t("totalCapacity")}</th>
+                <th className="px-3 py-2 font-bold">{t("availableSpace")}</th>
+                <th className="px-3 py-2 font-bold">{t("filled")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-emerald-100 bg-white">
@@ -393,19 +399,19 @@ const DashboardPage = ({
 
                 return (
                   <tr key={crop.crop}>
-                    <td className="px-3 py-2 font-semibold text-slate-800">
+                    <td className="px-3 py-2 font-semibold text-black">
                       {crop.crop}
                     </td>
-                    <td className="px-3 py-2 text-slate-700">
+                    <td className="px-3 py-2 text-black">
                       ₹{msp.toLocaleString("en-IN")}
                     </td>
-                    <td className="px-3 py-2 text-slate-700">
-                      {capacity.toLocaleString("en-IN")} quintal
+                    <td className="px-3 py-2 text-black">
+                      {capacity.toLocaleString("en-IN")} {t("quintal")}
                     </td>
-                    <td className="px-3 py-2 font-semibold text-slate-900">
-                      {available.toLocaleString("en-IN")} quintal
+                    <td className="px-3 py-2 font-semibold text-black">
+                      {available.toLocaleString("en-IN")} {t("quintal")}
                     </td>
-                    <td className="px-3 py-2 font-semibold text-emerald-800">
+                    <td className="px-3 py-2 font-semibold text-black">
                       {filledPercent.toFixed(0)}%
                     </td>
                   </tr>

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import api from "../lib/api";
-import useApiResource from "../hooks/useApiResource";
-import useOfficerCentre from "../hooks/useOfficerCentre";
+import useApiResource from "./useApiResource";
+import useOfficerCentre from "./useOfficerCentre";
 import {
   formatTime,
   kgToQuintal,
@@ -186,13 +186,21 @@ export function useOfficerQueue() {
     );
     const cleared = farmers.filter((farmer) => farmer.status === "Cleared");
 
+    // Translated at the render site (OfficerPortal), not here — this hook has
+    // no access to `t()` and shouldn't need one just to report a count.
     return [
-      { label: "In queue", value: active.length, tone: "bg-emerald-50" },
-      { label: "At the centre", value: arrived.length, tone: "bg-lime-50" },
-      { label: "Cleared", value: cleared.length, tone: "bg-emerald-50/60" },
+      { labelKey: "inQueue", value: active.length, tone: "bg-emerald-50" },
+      { labelKey: "atTheCentre", value: arrived.length, tone: "bg-lime-50" },
+      { labelKey: "cleared", value: cleared.length, tone: "bg-emerald-50/60" },
     ];
   }, [farmers]);
 
+  /**
+   * `message` is a translation key + interpolation params, not literal text —
+   * this hook has no `t()` of its own, so the banner is translated where it
+   * renders (OfficerPortal), the same as every other status shown to the
+   * officer.
+   */
   const flash = useCallback((message, tone = "success") => {
     setAlert({ message, tone });
     window.setTimeout(() => setAlert(null), 6000);
@@ -204,7 +212,8 @@ export function useOfficerQueue() {
    * Errors surface as the same banner the prototype used for payment alerts,
    * carrying the server's error code — the codes are the contract, and an
    * officer who taps Verify twice should read `INVALID_STATE_TRANSITION`
-   * rather than see nothing happen.
+   * rather than see nothing happen. `error` here is the raw API error object,
+   * translated at render time via `translateError`, not a literal string.
    */
   const run = useCallback(
     async (call, successMessage) => {
@@ -215,7 +224,7 @@ export function useOfficerQueue() {
         if (successMessage) flash(successMessage);
         return result;
       } catch (error) {
-        flash(error?.code ?? "Request failed", "danger");
+        flash({ error }, "danger");
         return null;
       }
     },
@@ -227,7 +236,10 @@ export function useOfficerQueue() {
       const farmer = farmers.find((entry) => entry.id === bookingCode);
       return run(
         () => api.officerArrive(bookingCode),
-        `Arrival recorded for ${farmer?.name ?? bookingCode}.`,
+        {
+          key: "arrivalRecordedFor",
+          params: { name: farmer?.name || bookingCode },
+        },
       );
     },
     [farmers, run],
@@ -236,10 +248,9 @@ export function useOfficerQueue() {
   /** "Verify" opens the weighbridge: ARRIVED → WEIGHING. */
   const verifyFarmer = useCallback(
     (bookingCode) =>
-      run(
-        () => api.officerStartWeighing(bookingCode),
-        "Farmer sent to the weighbridge.",
-      ),
+      run(() => api.officerStartWeighing(bookingCode), {
+        key: "farmerSentToWeighbridge",
+      }),
     [run],
   );
 
@@ -291,7 +302,7 @@ export function useOfficerQueue() {
       if (farmer.apiStatus === "WEIGHING" || farmer.apiStatus === "ARRIVED") {
         const result = await run(
           () => api.officerRecordWeight(bookingCode, quintalToKg(gross)),
-          "Gross weight recorded.",
+          { key: "grossWeightRecorded" },
         );
         if (result) clearDraft(bookingCode);
         return result;
@@ -311,17 +322,16 @@ export function useOfficerQueue() {
                 ? { rejectionReason: String(reason || "").trim() }
                 : {}),
             }),
-          "Quality recorded.",
+          { key: "qualityRecorded" },
         );
         if (result) clearDraft(bookingCode);
         return result;
       }
 
       if (farmer.apiStatus === "PROCUREMENT_RECORDED") {
-        const result = await run(
-          () => api.officerComplete(bookingCode),
-          "Procurement completed and priced.",
-        );
+        const result = await run(() => api.officerComplete(bookingCode), {
+          key: "procurementCompletedAndPriced",
+        });
         if (result) {
           clearDraft(bookingCode);
           setSelectedReportFarmerId(bookingCode);
@@ -329,7 +339,7 @@ export function useOfficerQueue() {
         return result;
       }
 
-      flash("Nothing left to record for this booking.", "danger");
+      flash({ key: "nothingLeftToRecord" }, "danger");
       return null;
     },
     [farmers, run, clearDraft, flash],
@@ -358,7 +368,10 @@ export function useOfficerQueue() {
             backendStatus,
             paymentReference,
           ),
-        `Payment marked ${nextStatus.toLowerCase()}.`,
+        // `status` is the internal English token ("Processing"/"Cleared"),
+        // resolved to display text at render time via translateOfficerStatus
+        // — never compared against or stored translated.
+        { key: "paymentMarked", params: { status: nextStatus } },
       );
 
       if (result && nextStatus === "Cleared") {

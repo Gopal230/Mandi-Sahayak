@@ -110,7 +110,7 @@ function Procurement() {
         <div className="mb-4">
           <label
             htmlFor="bookingSelect"
-            className="block text-sm font-medium text-slate-700"
+            className="block text-sm font-semibold text-black"
           >
             {t("selectBooking")}
           </label>
@@ -139,11 +139,11 @@ function Procurement() {
         <section className="mb-4 rounded-2xl bg-white p-4 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="truncate font-semibold text-slate-900">
+              <h2 className="truncate font-semibold text-black">
                 {booking.centre?.name}
               </h2>
 
-              <p className="mt-0.5 text-xs text-slate-400">
+              <p className="mt-0.5 text-xs text-black">
                 {booking.bookingCode}
               </p>
             </div>
@@ -182,7 +182,7 @@ function Procurement() {
         <>
           <section className="rounded-2xl bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-semibold text-slate-900">
+              <h2 className="font-semibold text-black">
                 {t("procurement")}
               </h2>
 
@@ -274,7 +274,7 @@ function Procurement() {
           </section>
 
           <section className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
-            <h2 className="font-semibold text-slate-900">
+            <h2 className="font-semibold text-black">
               {t("statusLabel")}
             </h2>
 
@@ -328,11 +328,11 @@ function Procurement() {
               className="mt-4 flex w-full items-center justify-between rounded-2xl border border-green-100 bg-green-50 px-4 py-4 text-left transition hover:border-green-200 hover:bg-green-100"
             >
               <div>
-                <p className="text-xs font-semibold text-green-700">
+                <p className="text-xs font-semibold text-black">
                   {t("payment")}
                 </p>
 
-                <p className="mt-1 text-sm font-medium text-slate-700">
+                <p className="mt-1 text-sm font-semibold text-black">
                   {translatePaymentStatus(
                     t,
                     payment.status,
@@ -340,7 +340,7 @@ function Procurement() {
                 </p>
               </div>
 
-              <span className="text-green-700">→</span>
+              <span className="text-black">→</span>
             </button>
           )}
         </>

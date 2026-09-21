@@ -58,7 +58,7 @@ export function FarmerLayout({
           </div>
 
           {subtitle && (
-            <p className="mt-3 text-sm text-green-100">{subtitle}</p>
+            <p className="mt-3 text-sm text-white">{subtitle}</p>
           )}
 
           {headerExtra}
@@ -79,7 +79,7 @@ export function FarmerLayout({
                 onClick={() => navigate(item.path)}
                 aria-current={active ? "page" : undefined}
                 className={`flex flex-col items-center px-4 py-1 text-xs transition ${
-                  active ? "font-semibold text-green-700" : "text-slate-500"
+                  active ? "font-semibold text-black" : "text-black"
                 }`}
               >
                 <span className="text-xl">{item.icon}</span>

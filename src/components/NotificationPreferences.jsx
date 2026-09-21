@@ -86,9 +86,9 @@ export function NotificationPreferences() {
 
   return (
     <section className="rounded-2xl bg-white p-4 shadow-sm">
-      <h2 className="font-semibold text-slate-900">{t("notificationPreferences")}</h2>
+      <h2 className="font-semibold text-black">{t("notificationPreferences")}</h2>
 
-      {data?.note && <p className="mt-1 text-xs leading-4 text-slate-500">{data.note}</p>}
+      {data?.note && <p className="mt-1 text-xs leading-4 text-black">{data.note}</p>}
 
       {error && <ErrorState error={error} className="mt-3" />}
 
@@ -98,7 +98,7 @@ export function NotificationPreferences() {
 
           return (
             <li key={event} className="flex items-center justify-between gap-3 py-3">
-              <span className="min-w-0 text-sm text-slate-700">
+              <span className="min-w-0 text-sm text-black">
                 {translateNotificationType(t, event)}
               </span>
 
@@ -124,7 +124,7 @@ export function NotificationPreferences() {
         })}
       </ul>
 
-      <p className="mt-3 text-xs leading-4 text-slate-400">{t("smsChannelUnavailable")}</p>
+      <p className="mt-3 text-xs leading-4 text-black">{t("smsChannelUnavailable")}</p>
     </section>
   );
 }

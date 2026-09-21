@@ -240,8 +240,8 @@ function OTPVerification() {
   const shownError = localError ?? (error ? translateError(t, error) : null);
 
   return (
-    <div className="min-h-screen bg-[#f3f5f3] text-slate-900">
-      <header className="border-b border-emerald-700/20 bg-[#11a255] text-white">
+    <div className="min-h-screen bg-[#f3f5f3] text-black">
+      <header className="border-b border-emerald-700/20 bg-[#0e8a48] text-white">
         <div className="mx-auto flex min-h-[72px] w-full max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
           <button
             type="button"
@@ -254,10 +254,10 @@ function OTPVerification() {
 
             <span>
               <span className="block text-lg font-extrabold tracking-tight">
-                Mandi Sahayak
+                {t("appName")}
               </span>
 
-              <span className="hidden text-xs font-medium text-white/80 sm:block">
+              <span className="hidden text-xs font-semibold text-white/80 sm:block">
                 {t("farmerProcurementPortal")}
               </span>
             </span>
@@ -281,50 +281,50 @@ function OTPVerification() {
                 📱
               </div>
 
-              <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
+              <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-black">
                 {t("verificationStepLabel")}
               </p>
 
-              <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+              <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-black sm:text-3xl">
                 {t("verifyMobileNumber")}
               </h1>
 
-              <p className="mt-3 text-sm leading-6 text-slate-500">
+              <p className="mt-3 text-sm leading-6 text-black">
                 {t("otpSentTo", { digits: otpLength })}
               </p>
 
-              <p className="mt-1 text-sm font-extrabold text-slate-800">
+              <p className="mt-1 text-sm font-extrabold text-black">
                 {maskedPhone}
               </p>
             </div>
 
             <div className="mt-8">
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-700">
+                <span className="text-xs font-bold uppercase tracking-[0.12em] text-black">
                   {t("stepOf", { current: 2, total: 2 })}
                 </span>
 
-                <span className="text-xs font-medium text-slate-400">
+                <span className="text-xs font-semibold text-black">
                   {t("verificationStepLabel")}
                 </span>
               </div>
 
               <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full w-full rounded-full bg-[#11a255]" />
+                <div className="h-full w-full rounded-full bg-[#0e8a48]" />
               </div>
             </div>
 
             {demoOtpCode && (
               <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-3 text-center">
-                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                <p className="text-xs font-semibold uppercase tracking-wide text-black">
                   {t("demoOtpLabel")}
                 </p>
 
-                <p className="mt-1 font-mono text-3xl font-bold tracking-[0.3em] text-amber-900">
+                <p className="mt-1 font-mono text-3xl font-bold tracking-[0.3em] text-black">
                   {demoOtpCode}
                 </p>
 
-                <p className="mt-2 text-[11px] leading-4 text-amber-700">
+                <p className="mt-2 text-[11px] leading-4 text-black">
                   {t("demoOtpNote")}
                 </p>
 
@@ -345,7 +345,7 @@ function OTPVerification() {
                         .split(""),
                     );
                   }}
-                  className="mt-2 text-xs font-semibold text-amber-800 underline"
+                  className="mt-2 text-xs font-semibold text-black underline"
                 >
                   {t("demoOtpFill")}
                 </button>
@@ -354,7 +354,7 @@ function OTPVerification() {
 
             {demoOtpUnavailable && (
               <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
-                <p className="text-xs font-semibold text-slate-600">
+                <p className="text-xs font-semibold text-black">
                   {t("demoOtpUnavailable")}
                 </p>
               </div>
@@ -390,13 +390,13 @@ function OTPVerification() {
 
             {shownError && (
               <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-center">
-                <p className="text-xs font-semibold text-red-600">
+                <p className="text-xs font-semibold text-black">
                   {shownError}
                 </p>
               </div>
             )}
 
-            <p className="mt-3 text-center text-xs text-slate-400">
+            <p className="mt-3 text-center text-xs text-black">
               {expired
                 ? t("otpExpired")
                 : t("otpExpiresIn", {
@@ -405,7 +405,7 @@ function OTPVerification() {
             </p>
 
             {typeof challenge.attemptsRemaining === "number" && (
-              <p className="mt-1 text-center text-xs text-slate-400">
+              <p className="mt-1 text-center text-xs text-black">
                 {t("attemptsRemaining", {
                   count: challenge.attemptsRemaining,
                 })}
@@ -413,10 +413,10 @@ function OTPVerification() {
             )}
 
             <div className="mt-7 text-center">
-              <p className="text-sm text-slate-500">{t("didntReceiveOtp")}</p>
+              <p className="text-sm text-black">{t("didntReceiveOtp")}</p>
 
               {resendIn > 0 ? (
-                <p className="mt-1 text-sm font-extrabold text-slate-400">
+                <p className="mt-1 text-sm font-extrabold text-black">
                   {t("resendOtpIn", {
                     seconds: resendIn,
                   })}
@@ -426,7 +426,7 @@ function OTPVerification() {
                   type="button"
                   onClick={handleResend}
                   disabled={resending}
-                  className="mt-1 text-sm font-extrabold text-emerald-700 hover:underline disabled:text-slate-400"
+                  className="mt-1 text-sm font-extrabold text-black hover:underline disabled:text-black"
                 >
                   {resending ? t("sendingOtp") : t("resendOtp")}
                 </button>
@@ -437,7 +437,7 @@ function OTPVerification() {
               type="button"
               onClick={handleVerify}
               disabled={submitting || expired}
-              className="mt-6 flex min-h-14 w-full items-center justify-center rounded-xl bg-[#15803d] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#166534] active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-emerald-300"
+              className="mt-6 flex min-h-14 w-full items-center justify-center rounded-xl bg-[#126d34] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#13562c] active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-emerald-300"
             >
               {submitting ? t("verifying") : `${t("verifyAndContinue")} →`}
             </button>
@@ -454,18 +454,18 @@ function OTPVerification() {
                   { replace: true },
                 )
               }
-              className="mt-3 flex min-h-12 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-500 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+              className="mt-3 flex min-h-12 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-black transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-black"
             >
               ← {t("changeMobileNumber")}
             </button>
 
-            <div className="mt-6 flex items-center justify-center gap-2 border-t border-slate-100 pt-5 text-xs font-medium text-slate-400">
+            <div className="mt-6 flex items-center justify-center gap-2 border-t border-slate-100 pt-5 text-xs font-semibold text-black">
               <span>🔒</span>
               <span>{t("secureVerification")}</span>
             </div>
           </div>
 
-          <p className="mt-5 text-center text-xs font-medium text-slate-400">
+          <p className="mt-5 text-center text-xs font-semibold text-black">
             {t("farmerProcurementPortal")}
           </p>
         </section>

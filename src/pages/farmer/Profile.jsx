@@ -98,7 +98,7 @@ function Profile() {
       onBack={() => navigate("/dashboard")}
     >
       {notice && (
-        <div className="mb-4 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+        <div className="mb-4 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-black">
           {notice}
         </div>
       )}
@@ -110,11 +110,11 @@ function Profile() {
           </div>
 
           <div className="min-w-0">
-            <h2 className="truncate text-lg font-bold text-slate-900">
+            <h2 className="truncate text-lg font-bold text-black">
               {farmer?.fullName ?? t("farmer")}
             </h2>
 
-            <p className="mt-0.5 text-sm text-slate-500">
+            <p className="mt-0.5 text-sm text-black">
               {farmer?.phoneMasked}
             </p>
           </div>
@@ -178,7 +178,7 @@ function Profile() {
           <div>
             <label
               htmlFor="fullName"
-              className="block text-sm font-medium text-slate-700"
+              className="block text-sm font-semibold text-black"
             >
               {t("fullName")}
             </label>
@@ -194,7 +194,7 @@ function Profile() {
             />
 
             {fieldErrors.fullName && (
-              <p className="mt-1 text-xs text-red-500">
+              <p className="mt-1 text-xs text-black">
                 {fieldErrors.fullName}
               </p>
             )}
@@ -203,7 +203,7 @@ function Profile() {
           <div className="mt-4">
             <label
               htmlFor="districtId"
-              className="block text-sm font-medium text-slate-700"
+              className="block text-sm font-semibold text-black"
             >
               {t("district")}
             </label>
@@ -234,18 +234,18 @@ function Profile() {
             </select>
 
             {fieldErrors.districtId && (
-              <p className="mt-1 text-xs text-red-500">
+              <p className="mt-1 text-xs text-black">
                 {fieldErrors.districtId}
               </p>
             )}
           </div>
 
-          <p className="mt-3 text-xs text-slate-400">
+          <p className="mt-3 text-xs text-black">
             {t("phoneNotEditable")}
           </p>
 
           {fieldErrors._ && (
-            <p className="mt-2 text-xs text-red-500">
+            <p className="mt-2 text-xs text-black">
               {fieldErrors._}
             </p>
           )}
@@ -262,7 +262,7 @@ function Profile() {
               type="button"
               onClick={() => setEditing(false)}
               disabled={saving}
-              className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-black transition hover:bg-slate-50"
             >
               {t("cancel")}
             </button>
@@ -282,7 +282,7 @@ function Profile() {
         <button
           type="button"
           onClick={() => setConfirmSignOut(true)}
-          className="w-full rounded-xl border border-red-200 px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+          className="w-full rounded-xl border border-red-200 px-4 py-3 text-sm font-semibold text-black transition hover:bg-red-50"
         >
           {t("signOut")}
         </button>
@@ -291,11 +291,11 @@ function Profile() {
       {confirmSignOut && (
         <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
-            <h3 className="text-lg font-bold text-slate-900">
+            <h3 className="text-lg font-bold text-black">
               {t("signOutConfirm")}
             </h3>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-black">
               {t("signOutWarning")}
             </p>
 
@@ -304,7 +304,7 @@ function Profile() {
                 type="button"
                 onClick={() => setConfirmSignOut(false)}
                 disabled={signingOut}
-                className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-black transition hover:bg-slate-50"
               >
                 {t("cancel")}
               </button>

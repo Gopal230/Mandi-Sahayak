@@ -128,13 +128,13 @@ function Registration() {
   }
 
   const inputClasses = (hasError) =>
-    `min-h-13 w-full rounded-xl border bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 ${
+    `min-h-13 w-full rounded-xl border bg-white px-4 text-sm text-black outline-none transition placeholder:text-black focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 ${
       hasError ? "border-red-400" : "border-slate-200"
     }`;
 
   return (
-    <div className="min-h-screen bg-[#f3f5f3] text-slate-900">
-      <header className="bg-[#11a255] text-white">
+    <div className="min-h-screen bg-[#f3f5f3] text-black">
+      <header className="bg-[#0e8a48] text-white">
         <div className="mx-auto flex min-h-[72px] w-full max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
           <button
             type="button"
@@ -147,11 +147,11 @@ function Registration() {
 
             <span>
               <span className="block text-lg font-extrabold tracking-tight">
-                Mandi Sahayak
+                {t("appName")}
               </span>
 
-              <span className="hidden text-xs font-medium text-white/80 sm:block">
-                Farmer Procurement Portal
+              <span className="hidden text-xs font-semibold text-white/80 sm:block">
+                {t("farmerProcurementPortal")}
               </span>
             </span>
           </button>
@@ -162,7 +162,7 @@ function Registration() {
             <button
               type="button"
               onClick={() => navigate("/login")}
-              className="rounded-full border border-white/30 bg-white px-4 py-2 text-sm font-bold text-[#15803d] transition hover:bg-white/90"
+              className="rounded-full border border-white/30 bg-white px-4 py-2 text-sm font-bold text-[#126d34] transition hover:bg-white/90"
             >
               {t("login")}
             </button>
@@ -177,15 +177,15 @@ function Registration() {
               🌾
             </div>
 
-            <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
+            <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-black">
               {t("stepOf", { current: 1, total: 2 })}
             </p>
 
-            <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+            <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-black sm:text-3xl">
               {t("createAccount")}
             </h1>
 
-            <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-slate-500">
+            <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-black">
               {t("createAccountDescription")}
             </p>
           </div>
@@ -193,22 +193,22 @@ function Registration() {
           <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_4px_18px_rgba(16,64,42,0.04)] sm:p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-700">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-black">
                   {t("registrationStepLabel")}
                 </p>
 
-                <p className="mt-1 text-sm font-semibold text-slate-700">
+                <p className="mt-1 text-sm font-semibold text-black">
                   {t("farmer")}
                 </p>
               </div>
 
-              <span className="text-xs font-semibold text-slate-400">
+              <span className="text-xs font-semibold text-black">
                 50%
               </span>
             </div>
 
             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full w-1/2 rounded-full bg-[#11a255]" />
+              <div className="h-full w-1/2 rounded-full bg-[#0e8a48]" />
             </div>
           </div>
 
@@ -227,11 +227,11 @@ function Registration() {
               noValidate
             >
               <div className="border-b border-slate-100 pb-6">
-                <h2 className="text-base font-extrabold text-slate-900">
+                <h2 className="text-base font-extrabold text-black">
                   {t("personalDetails")}
                 </h2>
 
-                <p className="mt-1 text-xs leading-5 text-slate-400">
+                <p className="mt-1 text-xs leading-5 text-black">
                   {t("personalDetailsDescription")}
                 </p>
 
@@ -239,7 +239,7 @@ function Registration() {
                   <div>
                     <label
                       htmlFor="fullName"
-                      className="mb-2 block text-sm font-bold text-slate-700"
+                      className="mb-2 block text-sm font-bold text-black"
                     >
                       {t("fullName")}
                     </label>
@@ -258,7 +258,7 @@ function Registration() {
                     />
 
                     {fieldErrors.fullName && (
-                      <p className="mt-1.5 text-xs font-medium text-red-500">
+                      <p className="mt-1.5 text-xs font-semibold text-black">
                         {fieldErrors.fullName}
                       </p>
                     )}
@@ -267,7 +267,7 @@ function Registration() {
                   <div>
                     <label
                       htmlFor="phone"
-                      className="mb-2 block text-sm font-bold text-slate-700"
+                      className="mb-2 block text-sm font-bold text-black"
                     >
                       {t("mobileNumber")}
                     </label>
@@ -279,7 +279,7 @@ function Registration() {
                           : "border-slate-200"
                       }`}
                     >
-                      <span className="flex min-h-13 items-center border-r border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-600">
+                      <span className="flex min-h-13 items-center border-r border-slate-200 bg-slate-50 px-4 text-sm font-bold text-black">
                         +91
                       </span>
 
@@ -299,16 +299,16 @@ function Registration() {
                           );
                           clearFieldError("phone");
                         }}
-                        className="min-h-13 min-w-0 flex-1 bg-white px-4 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                        className="min-h-13 min-w-0 flex-1 bg-white px-4 text-sm text-black outline-none placeholder:text-black"
                       />
                     </div>
 
                     {fieldErrors.phone ? (
-                      <p className="mt-1.5 text-xs font-medium text-red-500">
+                      <p className="mt-1.5 text-xs font-semibold text-black">
                         {fieldErrors.phone}
                       </p>
                     ) : (
-                      <p className="mt-1.5 text-xs text-slate-400">
+                      <p className="mt-1.5 text-xs text-black">
                         {t("otpWillBeSent")}
                       </p>
                     )}
@@ -317,11 +317,11 @@ function Registration() {
               </div>
 
               <div className="border-b border-slate-100 py-6">
-                <h2 className="text-base font-extrabold text-slate-900">
+                <h2 className="text-base font-extrabold text-black">
                   {t("locationDetails")}
                 </h2>
 
-                <p className="mt-1 text-xs leading-5 text-slate-400">
+                <p className="mt-1 text-xs leading-5 text-black">
                   {t("locationDetailsDescription")}
                 </p>
 
@@ -329,7 +329,7 @@ function Registration() {
                   <div>
                     <label
                       htmlFor="districtId"
-                      className="mb-2 block text-sm font-bold text-slate-700"
+                      className="mb-2 block text-sm font-bold text-black"
                     >
                       {t("district")}
                     </label>
@@ -367,7 +367,7 @@ function Registration() {
 
                     {districts.error && (
                       <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <p className="text-xs font-medium text-red-500">
+                        <p className="text-xs font-semibold text-black">
                           {t("districtsUnavailable")}{" "}
                           {translateError(t, districts.error)}
                         </p>
@@ -375,7 +375,7 @@ function Registration() {
                         <button
                           type="button"
                           onClick={districts.reload}
-                          className="text-xs font-bold text-green-700 hover:underline"
+                          className="text-xs font-bold text-black hover:underline"
                         >
                           {t("tryAgain")}
                         </button>
@@ -383,7 +383,7 @@ function Registration() {
                     )}
 
                     {fieldErrors.districtId && (
-                      <p className="mt-1.5 text-xs font-medium text-red-500">
+                      <p className="mt-1.5 text-xs font-semibold text-black">
                         {fieldErrors.districtId}
                       </p>
                     )}
@@ -393,7 +393,7 @@ function Registration() {
                     <div>
                       <label
                         htmlFor="villageId"
-                        className="mb-2 block text-sm font-bold text-slate-700"
+                        className="mb-2 block text-sm font-bold text-black"
                       >
                         {t("village")}
                       </label>
@@ -417,7 +417,7 @@ function Registration() {
                       </select>
 
                       {fieldErrors.villageId && (
-                        <p className="mt-1.5 text-xs font-medium text-red-500">
+                        <p className="mt-1.5 text-xs font-semibold text-black">
                           {fieldErrors.villageId}
                         </p>
                       )}
@@ -429,7 +429,7 @@ function Registration() {
                   !villages.loading &&
                   villages.data &&
                   !villages.data.available && (
-                    <p className="mt-3 text-xs text-slate-400">
+                    <p className="mt-3 text-xs text-black">
                       {translateReason(t, villages.data.reasonCode)}
                     </p>
                   )}
@@ -446,16 +446,16 @@ function Registration() {
                         setConsent(event.target.checked);
                         clearFieldError("consent");
                       }}
-                      className="mt-1 h-4 w-4 accent-[#15803d]"
+                      className="mt-1 h-4 w-4 accent-[#126d34]"
                     />
 
-                    <span className="text-xs leading-5 text-slate-600">
+                    <span className="text-xs leading-5 text-black">
                       {t("consentText")}
                     </span>
                   </label>
 
                   {fieldErrors.consent && (
-                    <p className="mt-2 text-xs font-medium text-red-500">
+                    <p className="mt-2 text-xs font-semibold text-black">
                       {fieldErrors.consent}
                     </p>
                   )}
@@ -465,21 +465,21 @@ function Registration() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex min-h-14 w-full items-center justify-center rounded-xl bg-[#15803d] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#166534] disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.99]"
+                className="flex min-h-14 w-full items-center justify-center rounded-xl bg-[#126d34] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#13562c] disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.99]"
               >
                 {submitting ? t("sendingOtp") : t("continueToOtp")}
                 <span className="ml-2 text-lg">→</span>
               </button>
 
               <div className="mt-6 text-center">
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-black">
                   {t("alreadyRegistered")}
                 </span>
 
                 <button
                   type="button"
                   onClick={() => navigate("/login")}
-                  className="ml-1 text-xs font-bold text-emerald-700 hover:underline"
+                  className="ml-1 text-xs font-bold text-black hover:underline"
                 >
                   {t("loginLink")}
                 </button>
@@ -487,7 +487,7 @@ function Registration() {
             </form>
           </div>
 
-          <p className="mt-5 text-center text-xs font-medium text-slate-400">
+          <p className="mt-5 text-center text-xs font-semibold text-black">
             {t("secureProcurement")}
           </p>
         </section>

@@ -85,11 +85,11 @@ function MyBooking() {
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate font-semibold text-slate-900">
+            <h3 className="truncate font-semibold text-black">
               {booking.centre?.name}
             </h3>
 
-            <p className="mt-0.5 text-xs text-slate-400">
+            <p className="mt-0.5 text-xs text-black">
               {booking.bookingCode}
             </p>
           </div>
@@ -102,15 +102,15 @@ function MyBooking() {
 
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div className="rounded-xl bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">{t("crop")}</p>
-            <p className="mt-1 font-medium text-slate-800">
+            <p className="text-xs text-black">{t("crop")}</p>
+            <p className="mt-1 font-semibold text-black">
               {booking.crop?.name}
             </p>
           </div>
 
           <div className="rounded-xl bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">{t("quantity")}</p>
-            <p className="mt-1 font-medium text-slate-800">
+            <p className="text-xs text-black">{t("quantity")}</p>
+            <p className="mt-1 font-semibold text-black">
               {formatQuantity(
                 kgToQuintal(booking.quantityKg),
                 locale,
@@ -120,8 +120,8 @@ function MyBooking() {
           </div>
 
           <div className="rounded-xl bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">{t("date")}</p>
-            <p className="mt-1 font-medium text-slate-800">
+            <p className="text-xs text-black">{t("date")}</p>
+            <p className="mt-1 font-semibold text-black">
               {formatDate(
                 booking.serviceDate,
                 zone,
@@ -131,21 +131,21 @@ function MyBooking() {
           </div>
 
           <div className="rounded-xl bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-black">
               {t("tokenNumberLabel")}
             </p>
-            <p className="mt-1 font-medium text-slate-800">
+            <p className="mt-1 font-semibold text-black">
               {booking.tokenNumber ?? "—"}
             </p>
           </div>
         </div>
 
         <div className="mt-3 rounded-xl bg-emerald-50 p-3">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-black">
             {t("arriveBy")}
           </p>
 
-          <p className="mt-1 text-sm font-semibold text-emerald-800">
+          <p className="mt-1 text-sm font-semibold text-black">
             {formatTimeRange(
               booking.scheduledStartAt,
               booking.processingEndAt,
@@ -167,7 +167,7 @@ function MyBooking() {
                 },
               })
             }
-            className="rounded-xl bg-[#15803d] px-3 py-3 text-xs font-semibold text-white transition hover:bg-[#166534]"
+            className="rounded-xl bg-[#126d34] px-3 py-3 text-xs font-semibold text-white transition hover:bg-[#13562c]"
           >
             {t("queueStatus")}
           </button>
@@ -181,7 +181,7 @@ function MyBooking() {
                 },
               })
             }
-            className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs font-semibold text-black transition hover:bg-slate-50"
           >
             {t("procurement")}
           </button>
@@ -194,7 +194,7 @@ function MyBooking() {
                 setCancelError(null);
                 setReason("");
               }}
-              className="rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-xs font-semibold text-red-700 transition hover:bg-red-100 sm:col-span-2"
+              className="rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-xs font-semibold text-black transition hover:bg-red-100 sm:col-span-2"
             >
               {t("cancelBooking")}
             </button>
@@ -211,7 +211,7 @@ function MyBooking() {
       onBack={() => navigate("/dashboard")}
     >
       {notice && (
-        <div className="mb-4 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+        <div className="mb-4 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-black">
           {notice}
         </div>
       )}
@@ -236,7 +236,7 @@ function MyBooking() {
                 <button
                   type="button"
                   onClick={() => navigate("/book-slot")}
-                  className="mt-5 w-full rounded-xl bg-[#15803d] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#166534]"
+                  className="mt-5 w-full rounded-xl bg-[#126d34] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#13562c]"
                 >
                   {t("bookSlot")} →
                 </button>
@@ -246,11 +246,11 @@ function MyBooking() {
             <div className="space-y-4">
               {active.length > 0 && (
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-bold text-slate-600">
+                  <h2 className="text-sm font-bold text-black">
                     {t("activeBookings")}
                   </h2>
 
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-black">
                     {active.length}
                   </span>
                 </div>
@@ -260,7 +260,7 @@ function MyBooking() {
 
               {showHistory && past.length > 0 && (
                 <>
-                  <h2 className="pt-3 text-sm font-bold text-slate-600">
+                  <h2 className="pt-3 text-sm font-bold text-black">
                     {t("pastBookings")}
                   </h2>
 
@@ -275,7 +275,7 @@ function MyBooking() {
             onClick={() =>
               setShowHistory((value) => !value)
             }
-            className="mt-5 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="mt-5 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-black transition hover:bg-slate-50"
           >
             {showHistory
               ? t("hideHistory")
@@ -287,21 +287,21 @@ function MyBooking() {
       {confirming && (
         <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl sm:p-6">
-            <h3 className="text-lg font-bold text-slate-900">
+            <h3 className="text-lg font-bold text-black">
               {t("cancelBookingConfirm")}
             </h3>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-black">
               {t("cancelBookingWarning")}
             </p>
 
-            <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
+            <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-black">
               {confirming.bookingCode}
             </p>
 
             <label
               htmlFor="cancelReason"
-              className="mt-4 block text-sm font-medium text-slate-700"
+              className="mt-4 block text-sm font-semibold text-black"
             >
               {t("cancelReason")}
             </label>
@@ -330,7 +330,7 @@ function MyBooking() {
                 type="button"
                 onClick={() => setConfirming(null)}
                 disabled={cancelling}
-                className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-black transition hover:bg-slate-50"
               >
                 {t("keepBooking")}
               </button>
@@ -348,7 +348,7 @@ function MyBooking() {
             </div>
 
             {cancelError && (
-              <p className="mt-2 text-center text-xs text-slate-400">
+              <p className="mt-2 text-center text-xs text-black">
                 {translateError(t, cancelError)}
               </p>
             )}
