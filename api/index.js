@@ -121,6 +121,7 @@ var ErrorCodes = {
   OTP_RESEND_LIMIT_REACHED: "OTP_RESEND_LIMIT_REACHED",
   DISTRICT_NOT_FOUND: "DISTRICT_NOT_FOUND",
   VILLAGE_NOT_IN_DISTRICT: "VILLAGE_NOT_IN_DISTRICT",
+  CROP_ID_INVALID: "CROP_ID_INVALID",
   // Booking (Phase 7)
   CENTRE_NOT_AVAILABLE: "CENTRE_NOT_AVAILABLE",
   CROP_NOT_CONFIGURED_AT_CENTRE: "CROP_NOT_CONFIGURED_AT_CENTRE",
@@ -1172,20 +1173,16 @@ async function submitOfficerRegistration(client, input, ctx2) {
       "That centre is not in the selected district."
     );
   }
-  const acceptedCrops = await client.query(
-    `SELECT crop_id FROM centre_crop_configurations
-      WHERE centre_id = $1 AND crop_id = ANY($2::uuid[])
-        AND is_active = true
-        AND effective_from <= CURRENT_DATE
-        AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)`,
-    [input.centreId, input.cropIds]
+  const activeCrops = await client.query(
+    `SELECT id FROM crops WHERE id = ANY($1::uuid[]) AND is_active = true`,
+    [input.cropIds]
   );
-  const acceptedCropIds = new Set(acceptedCrops.rows.map((row2) => row2.crop_id));
-  const unaccepted = input.cropIds.filter((id) => !acceptedCropIds.has(id));
-  if (unaccepted.length > 0) {
+  const activeCropIds = new Set(activeCrops.rows.map((row2) => row2.id));
+  const invalidCropIds = input.cropIds.filter((id) => !activeCropIds.has(id));
+  if (invalidCropIds.length > 0) {
     throw unprocessable(
-      ErrorCodes.CROP_NOT_CONFIGURED_AT_CENTRE,
-      "One or more selected crops are not accepted at the selected centre."
+      ErrorCodes.CROP_ID_INVALID,
+      "One or more selected crops are not valid active crops."
     );
   }
   const existing = await client.query(
@@ -1218,6 +1215,44 @@ async function submitOfficerRegistration(client, input, ctx2) {
     `INSERT INTO officer_centre_assignments (officer_id, centre_id)
      VALUES ($1, $2)`,
     [officer.rows[0].id, input.centreId]
+  );
+  for (const cropId of input.cropIds) {
+    const existingConfig = await client.query(
+      `SELECT id FROM centre_crop_configurations
+        WHERE centre_id = $1 AND crop_id = $2 AND is_active = true
+          AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)`,
+      [input.centreId, cropId]
+    );
+    if ((existingConfig.rowCount ?? 0) === 0) {
+      const rateInfo = await client.query(
+        `SELECT season_id, marketing_year FROM msp_rates
+         WHERE crop_id = $1
+         ORDER BY (status = 'ACTIVATED') DESC, effective_from DESC NULLS LAST
+         LIMIT 1`,
+        [cropId]
+      );
+      let seasonId = rateInfo.rows[0]?.season_id;
+      const marketingYear = rateInfo.rows[0]?.marketing_year ?? "2026-27";
+      if (!seasonId) {
+        const defaultSeason = await client.query(
+          `SELECT id FROM seasons ORDER BY code ASC LIMIT 1`
+        );
+        seasonId = defaultSeason.rows[0]?.id;
+      }
+      if (seasonId) {
+        await client.query(
+          `INSERT INTO centre_crop_configurations (
+             centre_id, crop_id, season_id, marketing_year, is_active,
+             effective_from, effective_to, data_type, configured_by_user_id, configuration_note
+           ) VALUES ($1, $2, $3, $4, true, CURRENT_DATE, NULL, 'CONFIGURED', $5, 'Configured during officer registration')`,
+          [input.centreId, cropId, seasonId, marketingYear, userId]
+        );
+      }
+    }
+  }
+  await client.query(
+    `UPDATE reference_versions SET version = version + 1, updated_at = now()
+     WHERE resource = 'procurement_centres'`
   );
   const { view } = await issueChallenge(client, {
     purpose: "STAFF_2FA",
@@ -2097,9 +2132,38 @@ function buildReferenceRouter() {
         }
       ]);
       if (limited) throw toError(limited);
-      const result = await query(
+      let result = await query(
         `SELECT id, canonical_name FROM crops WHERE is_active ORDER BY canonical_name`
       );
+      if (result.rows.length === 0) {
+        await query(`
+          INSERT INTO crops (code, canonical_name, data_type) VALUES
+            ('WHEAT',              'Wheat',              'CONFIGURED'),
+            ('BARLEY',             'Barley',             'CONFIGURED'),
+            ('GRAM',               'Gram',               'CONFIGURED'),
+            ('LENTIL_MASUR',       'Lentil (Masur)',     'CONFIGURED'),
+            ('RAPESEED_MUSTARD',   'Rapeseed & Mustard', 'CONFIGURED'),
+            ('SAFFLOWER',          'Safflower',          'CONFIGURED'),
+            ('PADDY',              'Paddy',              'CONFIGURED'),
+            ('JOWAR',              'Jowar',              'CONFIGURED'),
+            ('BAJRA',              'Bajra',              'CONFIGURED'),
+            ('RAGI',               'Ragi',               'CONFIGURED'),
+            ('MAIZE',              'Maize',              'CONFIGURED'),
+            ('TUR_ARHAR',          'Tur (Arhar)',        'CONFIGURED'),
+            ('MOONG',              'Moong',              'CONFIGURED'),
+            ('URAD',               'Urad',               'CONFIGURED'),
+            ('GROUNDNUT',          'Groundnut',          'CONFIGURED'),
+            ('SUNFLOWER_SEED',     'Sunflower Seed',     'CONFIGURED'),
+            ('SOYBEAN_YELLOW',     'Soybean (Yellow)',   'CONFIGURED'),
+            ('SESAMUM',            'Sesamum',            'CONFIGURED'),
+            ('NIGERSEED',          'Nigerseed',          'CONFIGURED'),
+            ('COTTON',             'Cotton',             'CONFIGURED')
+          ON CONFLICT (code) DO UPDATE SET is_active = true
+        `);
+        result = await query(
+          `SELECT id, canonical_name FROM crops WHERE is_active ORDER BY canonical_name`
+        );
+      }
       sendData(
         res,
         200,

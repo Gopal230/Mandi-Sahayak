@@ -228,8 +228,39 @@ export function buildReferenceRouter(): Router {
       if (limited) throw toError(limited);
 
       const result = await query<{ id: string; canonical_name: string }>(
+      let result = await query<{ id: string; canonical_name: string }>(
         `SELECT id, canonical_name FROM crops WHERE is_active ORDER BY canonical_name`,
       );
+
+      if (result.rows.length === 0) {
+        await query(`
+          INSERT INTO crops (code, canonical_name, data_type) VALUES
+            ('WHEAT',              'Wheat',              'CONFIGURED'),
+            ('BARLEY',             'Barley',             'CONFIGURED'),
+            ('GRAM',               'Gram',               'CONFIGURED'),
+            ('LENTIL_MASUR',       'Lentil (Masur)',     'CONFIGURED'),
+            ('RAPESEED_MUSTARD',   'Rapeseed & Mustard', 'CONFIGURED'),
+            ('SAFFLOWER',          'Safflower',          'CONFIGURED'),
+            ('PADDY',              'Paddy',              'CONFIGURED'),
+            ('JOWAR',              'Jowar',              'CONFIGURED'),
+            ('BAJRA',              'Bajra',              'CONFIGURED'),
+            ('RAGI',               'Ragi',               'CONFIGURED'),
+            ('MAIZE',              'Maize',              'CONFIGURED'),
+            ('TUR_ARHAR',          'Tur (Arhar)',        'CONFIGURED'),
+            ('MOONG',              'Moong',              'CONFIGURED'),
+            ('URAD',               'Urad',               'CONFIGURED'),
+            ('GROUNDNUT',          'Groundnut',          'CONFIGURED'),
+            ('SUNFLOWER_SEED',     'Sunflower Seed',     'CONFIGURED'),
+            ('SOYBEAN_YELLOW',     'Soybean (Yellow)',   'CONFIGURED'),
+            ('SESAMUM',            'Sesamum',            'CONFIGURED'),
+            ('NIGERSEED',          'Nigerseed',          'CONFIGURED'),
+            ('COTTON',             'Cotton',             'CONFIGURED')
+          ON CONFLICT (code) DO UPDATE SET is_active = true
+        `);
+        result = await query<{ id: string; canonical_name: string }>(
+          `SELECT id, canonical_name FROM crops WHERE is_active ORDER BY canonical_name`,
+        );
+      }
 
       sendData(
         res,

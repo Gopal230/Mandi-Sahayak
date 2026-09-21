@@ -224,15 +224,23 @@ export async function submitOfficerRegistration(
         AND effective_from <= CURRENT_DATE
         AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)`,
     [input.centreId, input.cropIds],
+  const activeCrops = await client.query<{ id: string }>(
+    `SELECT id FROM crops WHERE id = ANY($1::uuid[]) AND is_active = true`,
+    [input.cropIds],
   );
 
   const acceptedCropIds = new Set(acceptedCrops.rows.map((row) => row.crop_id));
   const unaccepted = input.cropIds.filter((id) => !acceptedCropIds.has(id));
+  const activeCropIds = new Set(activeCrops.rows.map((row) => row.id));
+  const invalidCropIds = input.cropIds.filter((id) => !activeCropIds.has(id));
 
   if (unaccepted.length > 0) {
+  if (invalidCropIds.length > 0) {
     throw unprocessable(
       ErrorCodes.CROP_NOT_CONFIGURED_AT_CENTRE,
       "One or more selected crops are not accepted at the selected centre.",
+      ErrorCodes.CROP_ID_INVALID,
+      "One or more selected crops are not valid active crops.",
     );
   }
 
@@ -270,6 +278,50 @@ export async function submitOfficerRegistration(
     `INSERT INTO officer_centre_assignments (officer_id, centre_id)
      VALUES ($1, $2)`,
     [officer.rows[0].id, input.centreId],
+  );
+
+  for (const cropId of input.cropIds) {
+    const existingConfig = await client.query(
+      `SELECT id FROM centre_crop_configurations
+        WHERE centre_id = $1 AND crop_id = $2 AND is_active = true
+          AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)`,
+      [input.centreId, cropId],
+    );
+
+    if ((existingConfig.rowCount ?? 0) === 0) {
+      const rateInfo = await client.query<{ season_id: string; marketing_year: string }>(
+        `SELECT season_id, marketing_year FROM msp_rates
+         WHERE crop_id = $1
+         ORDER BY (status = 'ACTIVATED') DESC, effective_from DESC NULLS LAST
+         LIMIT 1`,
+        [cropId],
+      );
+
+      let seasonId = rateInfo.rows[0]?.season_id;
+      const marketingYear = rateInfo.rows[0]?.marketing_year ?? "2026-27";
+
+      if (!seasonId) {
+        const defaultSeason = await client.query<{ id: string }>(
+          `SELECT id FROM seasons ORDER BY code ASC LIMIT 1`,
+        );
+        seasonId = defaultSeason.rows[0]?.id;
+      }
+
+      if (seasonId) {
+        await client.query(
+          `INSERT INTO centre_crop_configurations (
+             centre_id, crop_id, season_id, marketing_year, is_active,
+             effective_from, effective_to, data_type, configured_by_user_id, configuration_note
+           ) VALUES ($1, $2, $3, $4, true, CURRENT_DATE, NULL, 'CONFIGURED', $5, 'Configured during officer registration')`,
+          [input.centreId, cropId, seasonId, marketingYear, userId],
+        );
+      }
+    }
+  }
+
+  await client.query(
+    `UPDATE reference_versions SET version = version + 1, updated_at = now()
+     WHERE resource = 'procurement_centres'`,
   );
 
   const { view } = await issueChallenge(client, {
