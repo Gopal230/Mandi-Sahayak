@@ -36,7 +36,7 @@ function PortalSelect() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f3f5f3]">
-      <header className="bg-[#11a255] text-white">
+      <header className="bg-[#0e8a48] text-white">
         <div className="mx-auto flex min-h-[72px] w-full max-w-[1280px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-xl">
@@ -52,17 +52,17 @@ function PortalSelect() {
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
         <div className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-black">
             {t("step2Of2")}
           </p>
 
-          <h1 className="mt-3 text-2xl font-extrabold text-slate-900">{t("whoAreYou")}</h1>
+          <h1 className="mt-3 text-2xl font-extrabold text-black">{t("whoAreYou")}</h1>
 
-          <p className="mt-2 text-sm leading-6 text-slate-500">{t("whoAreYouDescription")}</p>
+          <p className="mt-2 text-sm leading-6 text-black">{t("whoAreYouDescription")}</p>
 
           {/* Same tile grid as the language chooser, so the two entry steps
               read as one flow rather than two unrelated screens. */}
-          <ul className="mt-7 grid grid-cols-2 gap-3">
+          <ul className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {options.map((option) => (
               <li key={option.key}>
                 <button
@@ -72,15 +72,15 @@ function PortalSelect() {
                 >
                   <span className="text-3xl">{option.icon}</span>
 
-                  <span className="mt-3 block text-base font-bold text-slate-900">
+                  <span className="mt-3 block text-base font-bold text-black">
                     {option.title}
                   </span>
 
-                  <span className="mt-0.5 block text-xs font-medium text-slate-400">
+                  <span className="mt-0.5 block text-xs font-semibold text-black">
                     {option.subtitle}
                   </span>
 
-                  <span className="mt-3 block text-xs leading-5 text-slate-500">
+                  <span className="mt-3 block text-xs leading-5 text-black">
                     {option.description}
                   </span>
                 </button>
@@ -91,7 +91,7 @@ function PortalSelect() {
           <button
             type="button"
             onClick={() => navigate("/")}
-            className="mt-6 text-sm font-bold text-emerald-700 hover:underline"
+            className="mt-6 text-sm font-bold text-black hover:underline"
           >
             ← {t("changeLanguage")}
           </button>
