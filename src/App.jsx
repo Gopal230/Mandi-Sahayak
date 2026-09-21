@@ -20,7 +20,7 @@ import Profile from "./pages/farmer/Profile";
 
 import OfficerLogin from "./pages/officer/OfficerLogin";
 import OfficerRegistration from "./pages/officer/OfficerRegistration";
-import OfficerPortal from "./officer/OfficerPortal";
+import OfficerPortal from "./pages/officer/OfficerPortal";
 
 import LanguageSelect from "./pages/LanguageSelect";
 import PortalSelect from "./pages/PortalSelect";
