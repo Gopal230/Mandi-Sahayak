@@ -474,7 +474,6 @@ function OfficerRegistration() {
                     </div>
                   ) : cropOptions.length === 0 ? (
                     <p className="text-xs text-black">
-                      {t("noCropsAtCentre")}
                       {t("noCropsAvailable")}
                     </p>
                   ) : (

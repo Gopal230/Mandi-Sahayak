@@ -325,11 +325,14 @@ import pg from "pg";
 var pool = null;
 function getPool() {
   if (!pool) {
+    const connStr = getConfig().DATABASE_URL;
+    const isLocal = connStr.includes("localhost") || connStr.includes("127.0.0.1");
     pool = new pg.Pool({
-      connectionString: getConfig().DATABASE_URL,
+      connectionString: connStr,
       max: 10,
       idleTimeoutMillis: 3e4,
-      connectionTimeoutMillis: 1e4
+      connectionTimeoutMillis: 1e4,
+      ...isLocal ? {} : { ssl: { rejectUnauthorized: false } }
     });
     pool.on("error", (err) => {
       console.error(JSON.stringify({ level: "error", msg: "idle pg client error", err: err.message }));
@@ -6649,9 +6652,28 @@ function buildApp() {
 }
 
 // scripts/vercel-entry.ts
-loadConfig();
-var app = buildApp();
+var app = null;
+var initError = null;
+try {
+  loadConfig();
+  app = buildApp();
+} catch (err) {
+  initError = err instanceof Error ? err : new Error(String(err));
+}
 function handler(req, res) {
+  if (initError || !app) {
+    res.statusCode = 500;
+    res.setHeader("content-type", "application/json");
+    res.end(
+      JSON.stringify({
+        error: {
+          code: "CONFIG_ERROR",
+          message: initError?.message || "Server initialization failed"
+        }
+      })
+    );
+    return;
+  }
   app(req, res);
 }
 export {

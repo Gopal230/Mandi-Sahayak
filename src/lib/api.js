@@ -142,6 +142,25 @@ async function request(method, path, options = {}) {
   }
 
   let response;
+  const timeoutMs = 15000;
+  const timeoutController = typeof AbortController !== "undefined" ? new AbortController() : null;
+  let timer = null;
+  let effectiveSignal = signal;
+
+  if (timeoutController) {
+    timer = setTimeout(() => {
+      timeoutController.abort(new Error("Request timed out"));
+    }, timeoutMs);
+
+    if (signal) {
+      if (signal.aborted) {
+        timeoutController.abort(signal.reason);
+      } else {
+        signal.addEventListener("abort", () => timeoutController.abort(signal.reason), { once: true });
+      }
+    }
+    effectiveSignal = timeoutController.signal;
+  }
 
   try {
     response = await fetch(url, {
@@ -149,11 +168,13 @@ async function request(method, path, options = {}) {
       credentials: "include",
       headers: requestHeaders,
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal,
+      signal: effectiveSignal,
     });
   } catch (cause) {
-    if (cause?.name === "AbortError") throw cause;
+    if (cause?.name === "AbortError" && signal?.aborted) throw cause;
     throw new NetworkError(cause);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 
   if (response.status === 204) return null;

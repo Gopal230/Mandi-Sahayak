@@ -15,11 +15,17 @@ let pool: pg.Pool | null = null;
 
 export function getPool(): pg.Pool {
   if (!pool) {
+    const connStr = getConfig().DATABASE_URL;
+    const isLocal =
+      connStr.includes('localhost') ||
+      connStr.includes('127.0.0.1');
+
     pool = new pg.Pool({
-      connectionString: getConfig().DATABASE_URL,
+      connectionString: connStr,
       max: 10,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 10_000,
+      ...(isLocal ? {} : { ssl: { rejectUnauthorized: false } }),
     });
     pool.on('error', (err) => {
       // An idle client failing must not take the process down.
