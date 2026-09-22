@@ -1,9 +1,130 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+/**
+ * The accepted / rejected / grade / moisture inputs for the quality-check
+ * step. A component of its own, keyed by `${bookingCode}:${apiStatus}` from
+ * the parent, so switching farmers (or a booking moving into QUALITY_CHECK)
+ * remounts it with fresh initial state instead of needing an effect to
+ * re-seed values pulled from props.
+ */
+function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
+  const initial = useMemo(
+    () => ({
+      accepted: farmer.actualWeight || (netWeight > 0 ? String(netWeight) : ""),
+      rejected: farmer.quality?.brokenGrain ?? "",
+      grade: farmer.quality?.foreignMatter ?? "",
+      moisture: farmer.quality?.moisture ?? "",
+      rejectionReason: farmer.rejectionReason ?? "",
+    }),
+    // Computed once per mount (this component is remounted via `key` when the
+    // farmer or stage changes), so it intentionally ignores later prop churn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const [accepted, setAccepted] = useState(initial.accepted);
+  const [rejected, setRejected] = useState(initial.rejected);
+  const [grade, setGrade] = useState(initial.grade);
+  const [moisture, setMoisture] = useState(initial.moisture);
+  const [rejectionReason, setRejectionReason] = useState(
+    initial.rejectionReason,
+  );
+
+  const emit = (next) => onValuesChange({ ...next });
+
+  return (
+    <div className="mt-6 rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-black">
+        {t("qualityCheckRequired")}
+      </p>
+      <p className="mt-1 text-xs leading-5 text-black">
+        {t("gradeDecidesPrice")}
+      </p>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black">
+          {t("acceptedQuantity")} ({t("quintal")})
+          <input
+            type="number"
+            value={accepted}
+            onChange={(event) => {
+              setAccepted(event.target.value);
+              emit({ accepted: event.target.value, rejected, grade, moisture, rejectionReason });
+            }}
+            className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
+          />
+        </label>
+
+        <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black">
+          {t("rejectedQuantity")} ({t("quintal")})
+          <input
+            type="number"
+            value={rejected}
+            onChange={(event) => {
+              setRejected(event.target.value);
+              emit({ accepted, rejected: event.target.value, grade, moisture, rejectionReason });
+            }}
+            className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
+          />
+        </label>
+
+        <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black">
+          {t("grade")}
+          <input
+            value={grade}
+            onChange={(event) => {
+              setGrade(event.target.value);
+              emit({ accepted, rejected, grade: event.target.value, moisture, rejectionReason });
+            }}
+            className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
+          />
+        </label>
+
+        <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black">
+          {t("moisture")} (%)
+          <input
+            type="number"
+            value={moisture}
+            onChange={(event) => {
+              setMoisture(event.target.value);
+              emit({ accepted, rejected, grade, moisture: event.target.value, rejectionReason });
+            }}
+            className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
+          />
+        </label>
+
+        {Number(rejected || 0) > 0 && (
+          <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black md:col-span-2 xl:col-span-2">
+            {t("rejectionReason")}
+            <input
+              value={rejectionReason}
+              onChange={(event) => {
+                setRejectionReason(event.target.value);
+                emit({ accepted, rejected, grade, moisture, rejectionReason: event.target.value });
+              }}
+              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
+            />
+          </label>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
   const { t } = useTranslation();
   const [selectedFarmerId, setSelectedFarmerId] = useState(null);
+
+  // Mirrors QualityCheckFields' latest values, lifted up via its onChange
+  // handlers so handleSave can read them without owning the inputs itself.
+  const [qualityValues, setQualityValues] = useState({
+    accepted: "",
+    rejected: "",
+    grade: "",
+    moisture: "",
+    rejectionReason: "",
+  });
 
   const activeFarmers = useMemo(
     () =>
@@ -43,6 +164,8 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
   const variance = declared > 0 ? netWeight - declared : 0;
   const isAlert = Math.abs(variance) > 50;
 
+  const isQualityStage = selectedFarmer?.apiStatus === "QUALITY_CHECK";
+
   const updateField = (field, value) => {
     if (!selectedFarmer) return;
     onUpdateFarmer?.(selectedFarmer.id, field, value);
@@ -51,9 +174,22 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
   const handleSave = async () => {
     if (!selectedFarmer) return;
 
+    if (isQualityStage) {
+      const { accepted, rejected, grade, moisture, rejectionReason } =
+        qualityValues;
+
+      await onSaveReport?.(selectedFarmer.id, {
+        actualWeight: accepted || String(netWeight || 0),
+        rejectedWeight: rejected || "0",
+        grade,
+        moisture,
+        rejectionReason,
+      });
+      return;
+    }
+
     await onSaveReport?.(selectedFarmer.id, {
       grossWeight: selectedFarmer.grossWeight ?? "",
-      actualWeight: String(netWeight || 0),
       lateMinutes: selectedFarmer.lateMinutes ?? "",
       paymentStatus: "Pending",
     });
@@ -138,7 +274,7 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
             </h3>
           </div>
           <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-black">
-            {selectedFarmer.apiStatus === "QUALITY_CHECK"
+            {isQualityStage
               ? t("qualityCheckRequired")
               : selectedFarmer.token}
           </span>
@@ -150,10 +286,11 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
             <input
               type="number"
               value={selectedFarmer.grossWeight ?? ""}
+              disabled={isQualityStage}
               onChange={(event) =>
                 updateField("grossWeight", event.target.value)
               }
-              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
+              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none disabled:bg-slate-100 disabled:text-black/60"
             />
           </label>
 
@@ -162,10 +299,11 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
             <input
               type="number"
               value={selectedFarmer.tareWeight ?? ""}
+              disabled={isQualityStage}
               onChange={(event) =>
                 updateField("tareWeight", event.target.value)
               }
-              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
+              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none disabled:bg-slate-100 disabled:text-black/60"
             />
           </label>
 
@@ -174,8 +312,9 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
             <input
               type="number"
               value={selectedFarmer.bagWeight ?? ""}
+              disabled={isQualityStage}
               onChange={(event) => updateField("bagWeight", event.target.value)}
-              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
+              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none disabled:bg-slate-100 disabled:text-black/60"
             />
           </label>
 
@@ -183,13 +322,24 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
             {t("weighbridgeSlipNo")}
             <input
               value={selectedFarmer.slipNumber ?? ""}
+              disabled={isQualityStage}
               onChange={(event) =>
                 updateField("slipNumber", event.target.value)
               }
-              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
+              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none disabled:bg-slate-100 disabled:text-black/60"
             />
           </label>
         </div>
+
+        {isQualityStage && (
+          <QualityCheckFields
+            key={`${selectedFarmer.id}:${selectedFarmer.apiStatus}`}
+            farmer={selectedFarmer}
+            netWeight={netWeight}
+            onValuesChange={setQualityValues}
+            t={t}
+          />
+        )}
 
         <div className="mt-6 rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -222,7 +372,7 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
           onClick={handleSave}
           className="rounded-full bg-green-700 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 hover:bg-green-800"
         >
-          {selectedFarmer.apiStatus === "QUALITY_CHECK"
+          {isQualityStage
             ? `✅ ${t("saveQualityAndWeight")}`
             : `⚖️ ${t("saveGrossWeight")}`}
         </button>
