@@ -254,13 +254,13 @@ const PaymentsPage = ({
                         className="mt-2 min-h-11 w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm text-black outline-none transition placeholder:text-black focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50"
                       />
                       <p
-                        className={`mt-1 text-xs ${referenceErrors[entry.id] ? "font-semibold text-black" : "text-black"}`}
+                        className={`mt-1 text-xs ${referenceErrors[entry.id] ? "font-semibold text-red-700" : "text-black"}`}
                       >
                         {referenceErrors[entry.id] ??
                           t("requiredBeforeClearing")}
                       </p>
                       {transitionErrors[entry.id] && (
-                        <p className="mt-1 text-xs font-semibold text-black">
+                        <p className="mt-1 text-xs font-semibold text-red-700">
                           {transitionErrors[entry.id]}
                         </p>
                       )}

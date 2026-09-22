@@ -168,7 +168,7 @@ function Login() {
                 </div>
 
                 {fieldError ? (
-                  <p className="mt-2 text-xs text-black">
+                  <p className="mt-2 text-xs text-red-700">
                     {fieldError}
                   </p>
                 ) : (

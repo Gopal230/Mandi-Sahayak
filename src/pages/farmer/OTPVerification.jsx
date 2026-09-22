@@ -390,7 +390,7 @@ function OTPVerification() {
 
             {shownError && (
               <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-center">
-                <p className="text-xs font-semibold text-black">
+                <p className="text-xs font-semibold text-red-700">
                   {shownError}
                 </p>
               </div>

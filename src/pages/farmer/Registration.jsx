@@ -258,7 +258,7 @@ function Registration() {
                     />
 
                     {fieldErrors.fullName && (
-                      <p className="mt-1.5 text-xs font-semibold text-black">
+                      <p className="mt-1.5 text-xs font-semibold text-red-700">
                         {fieldErrors.fullName}
                       </p>
                     )}
@@ -304,7 +304,7 @@ function Registration() {
                     </div>
 
                     {fieldErrors.phone ? (
-                      <p className="mt-1.5 text-xs font-semibold text-black">
+                      <p className="mt-1.5 text-xs font-semibold text-red-700">
                         {fieldErrors.phone}
                       </p>
                     ) : (
@@ -383,7 +383,7 @@ function Registration() {
                     )}
 
                     {fieldErrors.districtId && (
-                      <p className="mt-1.5 text-xs font-semibold text-black">
+                      <p className="mt-1.5 text-xs font-semibold text-red-700">
                         {fieldErrors.districtId}
                       </p>
                     )}
@@ -417,7 +417,7 @@ function Registration() {
                       </select>
 
                       {fieldErrors.villageId && (
-                        <p className="mt-1.5 text-xs font-semibold text-black">
+                        <p className="mt-1.5 text-xs font-semibold text-red-700">
                           {fieldErrors.villageId}
                         </p>
                       )}
@@ -455,7 +455,7 @@ function Registration() {
                   </label>
 
                   {fieldErrors.consent && (
-                    <p className="mt-2 text-xs font-semibold text-black">
+                    <p className="mt-2 text-xs font-semibold text-red-700">
                       {fieldErrors.consent}
                     </p>
                   )}

@@ -40,9 +40,9 @@ export function ErrorState({ error, onRetry, className = "" }) {
         <span className="text-lg leading-none">⚠️</span>
 
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-black">{t("somethingWentWrong")}</p>
+          <p className="text-sm font-semibold text-red-700">{t("somethingWentWrong")}</p>
 
-          <p className="mt-1 text-sm leading-5 text-black">{translateError(t, error)}</p>
+          <p className="mt-1 text-sm leading-5 text-red-700">{translateError(t, error)}</p>
 
           {onRetry && (
             <button

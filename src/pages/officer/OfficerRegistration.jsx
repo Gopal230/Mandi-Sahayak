@@ -249,7 +249,7 @@ function OfficerRegistration() {
                     />
 
                     {fieldErrors.fullName && (
-                      <p className="mt-2 text-xs font-semibold text-black">
+                      <p className="mt-2 text-xs font-semibold text-red-700">
                         {fieldErrors.fullName}
                       </p>
                     )}
@@ -293,7 +293,7 @@ function OfficerRegistration() {
                     </div>
 
                     {fieldErrors.phone && (
-                      <p className="mt-2 text-xs font-semibold text-black">
+                      <p className="mt-2 text-xs font-semibold text-red-700">
                         {fieldErrors.phone}
                       </p>
                     )}
@@ -374,7 +374,7 @@ function OfficerRegistration() {
                     )}
 
                     {fieldErrors.districtId && (
-                      <p className="mt-2 text-xs font-semibold text-black">
+                      <p className="mt-2 text-xs font-semibold text-red-700">
                         {fieldErrors.districtId}
                       </p>
                     )}
@@ -441,7 +441,7 @@ function OfficerRegistration() {
                     )}
 
                     {fieldErrors.centreId && (
-                      <p className="mt-2 text-xs font-semibold text-black">
+                      <p className="mt-2 text-xs font-semibold text-red-700">
                         {fieldErrors.centreId}
                       </p>
                     )}
@@ -495,7 +495,7 @@ function OfficerRegistration() {
                   )}
 
                   {fieldErrors.cropIds && (
-                    <p className="mt-2 text-xs font-semibold text-black">
+                    <p className="mt-2 text-xs font-semibold text-red-700">
                       {fieldErrors.cropIds}
                     </p>
                   )}
@@ -523,7 +523,7 @@ function OfficerRegistration() {
               </div>
 
               {fieldErrors.consent && (
-                <p className="mt-2 text-xs font-semibold text-black">
+                <p className="mt-2 text-xs font-semibold text-red-700">
                   {fieldErrors.consent}
                 </p>
               )}
