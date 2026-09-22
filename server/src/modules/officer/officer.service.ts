@@ -564,54 +564,18 @@ export async function updatePaymentStatus(
   to: string,
   reference: string | null,
   ctx: OfficerCtx,
-  grade: string | null = null,
 ) {
   return withTransaction(async (client) => {
     const booking = await lockInState(client, bookingCode, ctx, ['PAYMENT_PENDING']);
     const procurement = await requireProcurement(booking.id, client);
 
-    let payment = await repo.lockPayment(client, procurement.id);
+    const payment = await repo.lockPayment(client, procurement.id);
     if (!payment) throw conflict(ErrorCodes.PAYMENT_NOT_READY, 'No payment record for this booking');
 
     if (payment.status === 'BLOCKED') {
-      const view = await repo.findByCodeInCentres(bookingCode, ctx.scope, client);
-      const candidates = await repo.activeMspCandidates(view!.crop_id, view!.season_id, view!.marketing_year, client);
-      const targetGrade = grade || procurement.grade;
-      const resolution = resolveMspRate(candidates, targetGrade);
-
-      if (resolution.resolved) {
-        const unblocked = await client.query<PaymentRow>(
-          `UPDATE payments
-              SET msp_rate_id = $2,
-                  rate_per_quintal_paise_snapshot = r.rate_per_quintal_paise,
-                  base_amount_paise = ROUND(p.accepted_quantity_kg / 100.0 * r.rate_per_quintal_paise)::bigint,
-                  amount_paise = GREATEST(
-                    ROUND(p.accepted_quantity_kg / 100.0 * r.rate_per_quintal_paise)::bigint - COALESCE(payments.deductions_paise, 0),
-                    0
-                  ),
-                  status = 'PENDING',
-                  blocked_reason = NULL,
-                  updated_at = now()
-             FROM procurements p
-             JOIN msp_rates r ON r.id = $2
-            WHERE payments.id = $1 AND p.id = payments.procurement_id
-            RETURNING payments.*`,
-          [payment.id, resolution.rate.id],
-        );
-        if (unblocked.rows.length > 0) {
-          payment = unblocked.rows[0];
-          if (grade) {
-            await client.query(
-              'UPDATE procurements SET grade = $2 WHERE id = $1',
-              [procurement.id, grade],
-            );
-          }
-        }
-      } else {
-        throw conflict(ErrorCodes.PAYMENT_BLOCKED, 'This payment is blocked and cannot be advanced', {
-          blockedReason: payment.blocked_reason,
-        });
-      }
+      throw conflict(ErrorCodes.PAYMENT_BLOCKED, 'This payment is blocked and cannot be advanced', {
+        blockedReason: payment.blocked_reason,
+      });
     }
 
     if (!(PAYMENT_TRANSITIONS[payment.status] ?? []).includes(to)) {

@@ -8,9 +8,9 @@
  * safety net and is skipped here; run `npm run typecheck` / the migration
  * scripts before deploying instead.
  */
-import type { IncomingMessage, ServerResponse } from "node:http";
-import { loadConfig } from "../server/src/core/config.ts";
-import { buildApp } from "../server/src/app.ts";
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import { loadConfig } from '../server/src/core/config.ts';
+import { buildApp } from '../server/src/app.ts';
 
 let app: ReturnType<typeof buildApp> | null = null;
 let initError: Error | null = null;
@@ -25,12 +25,12 @@ try {
 export default function handler(req: IncomingMessage, res: ServerResponse) {
   if (initError || !app) {
     res.statusCode = 500;
-    res.setHeader("content-type", "application/json");
+    res.setHeader('content-type', 'application/json');
     res.end(
       JSON.stringify({
         error: {
-          code: "CONFIG_ERROR",
-          message: initError?.message || "Server initialization failed",
+          code: 'CONFIG_ERROR',
+          message: initError?.message || 'Server initialization failed',
         },
       }),
     );

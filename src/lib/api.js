@@ -55,8 +55,7 @@ export class ApiError extends Error {
      * exist. NETWORK_UNAVAILABLE is the honest answer, and is already
      * translated.
      */
-    this.code =
-      error.code || (envelopeParsed ? "INTERNAL_ERROR" : "NETWORK_UNAVAILABLE");
+    this.code = error.code || (envelopeParsed ? "INTERNAL_ERROR" : "NETWORK_UNAVAILABLE");
     this.fields = error.fields || null;
     this.details = error.details || null;
     this.requestId = error.requestId || requestId || null;
@@ -144,8 +143,7 @@ async function request(method, path, options = {}) {
 
   let response;
   const timeoutMs = 15000;
-  const timeoutController =
-    typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeoutController = typeof AbortController !== "undefined" ? new AbortController() : null;
   let timer = null;
   let effectiveSignal = signal;
 
@@ -158,11 +156,7 @@ async function request(method, path, options = {}) {
       if (signal.aborted) {
         timeoutController.abort(signal.reason);
       } else {
-        signal.addEventListener(
-          "abort",
-          () => timeoutController.abort(signal.reason),
-          { once: true },
-        );
+        signal.addEventListener("abort", () => timeoutController.abort(signal.reason), { once: true });
       }
     }
     effectiveSignal = timeoutController.signal;
@@ -446,21 +440,11 @@ export const api = {
   officerCancel: (bookingCode, reason, signal) =>
     officerAction(bookingCode, "cancel", reason ? { reason } : {}, signal),
 
-  officerSetPaymentStatus: (
-    bookingCode,
-    status,
-    paymentReference,
-    grade,
-    signal,
-  ) =>
+  officerSetPaymentStatus: (bookingCode, status, paymentReference, signal) =>
     officerAction(
       bookingCode,
       "payment",
-      {
-        status,
-        ...(paymentReference ? { paymentReference } : {}),
-        ...(grade ? { grade } : {}),
-      },
+      paymentReference ? { status, paymentReference } : { status },
       signal,
     ),
 

@@ -6,29 +6,6 @@ import { translateOfficerStatus } from "../../lib/officerStatus";
 
 const paymentStatusButtons = ["Pending", "Processing", "Cleared"];
 
-const CROP_GRADE_OPTIONS = {
-  paddy: [
-    { label: "Common (₹2,441/qtl)", value: "Common", rate: 2441 },
-    { label: "Grade A (₹2,461/qtl)", value: "Grade A", rate: 2461 },
-  ],
-  jowar: [
-    { label: "Hybrid (₹4,023/qtl)", value: "Hybrid", rate: 4023 },
-    { label: "Maldandi (₹4,073/qtl)", value: "Maldandi", rate: 4073 },
-  ],
-  cotton: [
-    { label: "Medium Staple (₹7,721/qtl)", value: "Medium Staple", rate: 7721 },
-    { label: "Long Staple (₹8,210/qtl)", value: "Long Staple", rate: 8210 },
-  ],
-};
-
-const getAvailableGrades = (cropName) => {
-  if (!cropName) return null;
-  if (/paddy|धान/i.test(cropName)) return CROP_GRADE_OPTIONS.paddy;
-  if (/jowar|ज्वार/i.test(cropName)) return CROP_GRADE_OPTIONS.jowar;
-  if (/cotton|कपास/i.test(cropName)) return CROP_GRADE_OPTIONS.cotton;
-  return null;
-};
-
 const PaymentsPage = ({
   farmers = [],
   onPaymentStatusChange,
@@ -37,7 +14,6 @@ const PaymentsPage = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [expandedId, setExpandedId] = useState(null);
-  const [selectedGrades, setSelectedGrades] = useState({});
   const [paymentReferences, setPaymentReferences] = useState({});
   const [referenceErrors, setReferenceErrors] = useState({});
   const [transitionErrors, setTransitionErrors] = useState({});
@@ -78,25 +54,14 @@ const PaymentsPage = ({
    * The price is the server's, never this screen's.
    *
    * `complete` resolves the MSP rate by crop, season and marketing year and
-   * prices the procurement in the same transaction (officer.md §5). If the
-   * rate was ambiguous because grade was not recorded, selecting a grade
-   * previews the official rate before submitting.
+   * prices the procurement in the same transaction (officer.md §5). Recomputing
+   * it here from a rate table would produce a second, quietly different number
+   * on the screen the officer pays from.
    */
-  const getPriceBreakdown = (entry, chosenGrade) => {
+  const getPriceBreakdown = (entry) => {
     const actualWeight = Number(entry.actualWeight || 0);
-    let rate = Number(entry.mspRate || 0);
-    let payable = Number(entry.paidAmount || 0);
-
-    if (rate === 0 && chosenGrade) {
-      const available = getAvailableGrades(entry.crop);
-      const matched = available?.find(
-        (g) => g.value.toLowerCase() === chosenGrade.toLowerCase(),
-      );
-      if (matched) {
-        rate = matched.rate;
-        payable = Math.round(actualWeight * rate);
-      }
-    }
+    const rate = Number(entry.mspRate || 0);
+    const payable = Number(entry.paidAmount || 0);
 
     return {
       actualWeight,
@@ -129,16 +94,7 @@ const PaymentsPage = ({
       return;
     }
 
-    const available = getAvailableGrades(entry?.crop);
-    const defaultGrade = available?.[0]?.value ?? "";
-    const chosenGrade = selectedGrades[id] || entry?.grade || defaultGrade;
-
-    const result = await onPaymentStatusChange?.(
-      id,
-      status,
-      paymentReference,
-      chosenGrade,
-    );
+    const result = await onPaymentStatusChange?.(id, status, paymentReference);
 
     setTransitionErrors((current) => {
       if (!current[id]) return current;
@@ -175,18 +131,7 @@ const PaymentsPage = ({
           </div>
         ) : (
           activePayments.map((entry) => {
-            const availableGrades = getAvailableGrades(entry.crop);
-            const defaultGrade = availableGrades?.[0]?.value ?? "";
-            const currentGrade =
-              selectedGrades[entry.id] || entry.grade || defaultGrade;
-            const isAmbiguous =
-              entry.paymentBlockedReason === "MSP_AMBIGUOUS" ||
-              !entry.mspRate ||
-              Number(entry.mspRate) === 0;
-            const { actualWeight, rate, payable } = getPriceBreakdown(
-              entry,
-              currentGrade,
-            );
+            const { actualWeight, rate, payable } = getPriceBreakdown(entry);
             const isExpanded = expandedId === entry.id;
 
             return (
@@ -253,53 +198,6 @@ const PaymentsPage = ({
                         </p>
                       </div>
                     </div>
-
-                    {isAmbiguous && availableGrades && (
-                      <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">⚠️</span>
-                          <p className="text-xs font-bold text-amber-900">
-                            {t(
-                              "gradeRequiredTitle",
-                              "Crop Grade Required for MSP Calculation",
-                            )}
-                          </p>
-                        </div>
-                        <p className="mt-1 text-xs text-amber-800">
-                          {t(
-                            "selectGradePrompt",
-                            "Select the crop grade to determine the support price and unblock this payment:",
-                          )}
-                        </p>
-                        <div className="mt-2.5 flex flex-wrap gap-2">
-                          {availableGrades.map((option) => {
-                            const isSelected =
-                              (currentGrade || "").toLowerCase() ===
-                              option.value.toLowerCase();
-                            return (
-                              <button
-                                key={option.value}
-                                type="button"
-                                onClick={() =>
-                                  setSelectedGrades((current) => ({
-                                    ...current,
-                                    [entry.id]: option.value,
-                                  }))
-                                }
-                                className={[
-                                  "rounded-lg border px-3 py-1.5 text-xs font-bold transition",
-                                  isSelected
-                                    ? "border-amber-700 bg-amber-700 text-white shadow-sm"
-                                    : "border-amber-300 bg-white text-amber-900 hover:bg-amber-100",
-                                ].join(" ")}
-                              >
-                                {option.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
 
                     <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
                       {paymentStatusButtons.map((status) => {

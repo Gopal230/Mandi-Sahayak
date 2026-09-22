@@ -335,13 +335,7 @@ function getPool() {
       ...isLocal ? {} : { ssl: { rejectUnauthorized: false } }
     });
     pool.on("error", (err) => {
-      console.error(
-        JSON.stringify({
-          level: "error",
-          msg: "idle pg client error",
-          err: err.message
-        })
-      );
+      console.error(JSON.stringify({ level: "error", msg: "idle pg client error", err: err.message }));
     });
   }
   return pool;
@@ -4460,50 +4454,16 @@ var PAYMENT_TRANSITIONS = {
   FAILED: ["PENDING", "INITIATED"],
   PAID: []
 };
-async function updatePaymentStatus2(bookingCode, to, reference, ctx2, grade = null) {
+async function updatePaymentStatus2(bookingCode, to, reference, ctx2) {
   return withTransaction(async (client) => {
     const booking = await lockInState(client, bookingCode, ctx2, ["PAYMENT_PENDING"]);
     const procurement = await requireProcurement(booking.id, client);
-    let payment = await lockPayment(client, procurement.id);
+    const payment = await lockPayment(client, procurement.id);
     if (!payment) throw conflict(ErrorCodes.PAYMENT_NOT_READY, "No payment record for this booking");
     if (payment.status === "BLOCKED") {
-      const view2 = await findByCodeInCentres(bookingCode, ctx2.scope, client);
-      const candidates = await activeMspCandidates(view2.crop_id, view2.season_id, view2.marketing_year, client);
-      const targetGrade = grade || procurement.grade;
-      const resolution = resolveMspRate(candidates, targetGrade);
-      if (resolution.resolved) {
-        const unblocked = await client.query(
-          `UPDATE payments
-              SET msp_rate_id = $2,
-                  rate_per_quintal_paise_snapshot = r.rate_per_quintal_paise,
-                  base_amount_paise = ROUND(p.accepted_quantity_kg / 100.0 * r.rate_per_quintal_paise)::bigint,
-                  amount_paise = GREATEST(
-                    ROUND(p.accepted_quantity_kg / 100.0 * r.rate_per_quintal_paise)::bigint - COALESCE(payments.deductions_paise, 0),
-                    0
-                  ),
-                  status = 'PENDING',
-                  blocked_reason = NULL,
-                  updated_at = now()
-             FROM procurements p
-             JOIN msp_rates r ON r.id = $2
-            WHERE payments.id = $1 AND p.id = payments.procurement_id
-            RETURNING payments.*`,
-          [payment.id, resolution.rate.id]
-        );
-        if (unblocked.rows.length > 0) {
-          payment = unblocked.rows[0];
-          if (grade) {
-            await client.query(
-              "UPDATE procurements SET grade = $2 WHERE id = $1",
-              [procurement.id, grade]
-            );
-          }
-        }
-      } else {
-        throw conflict(ErrorCodes.PAYMENT_BLOCKED, "This payment is blocked and cannot be advanced", {
-          blockedReason: payment.blocked_reason
-        });
-      }
+      throw conflict(ErrorCodes.PAYMENT_BLOCKED, "This payment is blocked and cannot be advanced", {
+        blockedReason: payment.blocked_reason
+      });
     }
     if (!(PAYMENT_TRANSITIONS[payment.status] ?? []).includes(to)) {
       throw conflict(
@@ -4653,8 +4613,7 @@ var QualitySchema = z6.object({
 });
 var PaymentSchema = z6.object({
   status: z6.enum(["PENDING", "INITIATED", "PAID", "FAILED", "ON_HOLD"]),
-  paymentReference: z6.string().trim().min(1).max(120).optional(),
-  grade: z6.string().trim().min(1).max(64).optional()
+  paymentReference: z6.string().trim().min(1).max(120).optional()
 });
 function parse3(schema, body) {
   const r = schema.safeParse(body);
@@ -4832,8 +4791,7 @@ function buildOfficerRouter() {
       code(req),
       body.status,
       body.paymentReference ?? null,
-      ctxOf3(req),
-      body.grade ?? null
+      ctxOf3(req)
     );
   });
   declareRoute({
