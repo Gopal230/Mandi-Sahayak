@@ -79,8 +79,8 @@ function OfficerPortal() {
     <div className="min-h-screen overflow-x-hidden bg-[#f3f5f3] p-0 text-black">
       <div className="mx-auto max-w-[1280px] min-w-0">
         <div className="bg-[#0e8a48] px-4 py-4 text-white sm:px-6">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div className="min-w-0">
+          <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 w-full sm:w-auto">
               <p className="flex items-center gap-2 text-lg font-black uppercase tracking-[0.18em] text-white">
                 <span aria-hidden="true">🌾</span>
                 {t("appName")}
@@ -97,7 +97,7 @@ function OfficerPortal() {
               )}
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:flex-nowrap">
               <label className="flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-2 text-sm font-semibold text-white">
                 <span className="text-xs uppercase tracking-[0.14em] text-white/70">
                   {t("dateLabel")}
