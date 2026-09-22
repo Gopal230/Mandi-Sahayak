@@ -135,11 +135,13 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
     );
   }, [activeFarmers, selectedFarmerId]);
 
-  const gross = Number(selectedFarmer?.grossWeight ?? 0);
-  const tare = Number(selectedFarmer?.tareWeight ?? 0);
-  const bagWeight = Number(selectedFarmer?.bagWeight ?? 0);
-  const netWeight = Number.isFinite(gross - tare - bagWeight)
-    ? gross - tare - bagWeight
+  const gross = Number(selectedFarmer?.grossWeight ?? 0); // quintals
+  const tareKg = Number(selectedFarmer?.tareWeight ?? 0); // kg
+  const bagWeightKg = Number(selectedFarmer?.bagWeight ?? 0); // kg
+  const tareQuintal = tareKg / 100;
+  const bagWeightQuintal = bagWeightKg / 100;
+  const netWeight = Number.isFinite(gross - tareQuintal - bagWeightQuintal)
+    ? gross - tareQuintal - bagWeightQuintal
     : 0;
 
   const declared = Number(selectedFarmer?.quantity ?? 0);
@@ -275,7 +277,7 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
           </label>
 
           <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black">
-            {t("tareWeightQuintal")}
+            {t("tareWeightKg")}
             <input
               type="number"
               value={selectedFarmer.tareWeight ?? ""}
@@ -288,7 +290,7 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
           </label>
 
           <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black">
-            {t("bagWeightQuintal")}
+            {t("bagWeightKg")}
             <input
               type="number"
               value={selectedFarmer.bagWeight ?? ""}
