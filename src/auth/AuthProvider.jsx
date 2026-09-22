@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import api, { ApiError, primeCsrf } from "../lib/api";
 import { isSupportedLanguage, SERVER_LOCALES } from "../lib/languages";
+import { hasStoredLanguage } from "../i18n";
 import { AuthContext } from "./context";
 
 /**
@@ -87,10 +88,20 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  // The server owns the farmer's locale. When it disagrees with the UI the
-  // server wins, so a language set on one device follows the farmer to another.
+  // The server remembers the farmer's locale so it can follow them to a new
+  // device — but only a NEW device: `mandiSahayakLanguage` in localStorage is
+  // this device's own record of a choice already made (in this session or a
+  // past one), including languages the server has no field for (only en/hi
+  // are mirrored — see `changeLanguage` below). A device with its own stored
+  // choice must not have it overwritten by a stale server default the moment
+  // login resolves, which is what made picking a language before signing in
+  // appear to be undone on every screen after.
   useEffect(() => {
-    if (farmer?.locale && farmer.locale !== i18n.language) {
+    if (
+      farmer?.locale &&
+      farmer.locale !== i18n.language &&
+      !hasStoredLanguage()
+    ) {
       i18n.changeLanguage(farmer.locale);
       storeLanguage(farmer.locale);
     }
