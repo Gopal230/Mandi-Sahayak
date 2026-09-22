@@ -1,5 +1,29 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+
+const CROP_GRADE_PRESETS = [
+  {
+    match: /paddy|धान/i,
+    options: [
+      { label: "Common", value: "Common" },
+      { label: "Grade A", value: "Grade A" },
+    ],
+  },
+  {
+    match: /jowar|ज्वार/i,
+    options: [
+      { label: "Hybrid", value: "Hybrid" },
+      { label: "Maldandi", value: "Maldandi" },
+    ],
+  },
+  {
+    match: /cotton|कपास/i,
+    options: [
+      { label: "Medium Staple", value: "Medium Staple" },
+      { label: "Long Staple", value: "Long Staple" },
+    ],
+  },
+];
 
 /**
  * The accepted / rejected / grade / moisture inputs for the quality-check
@@ -9,11 +33,16 @@ import { useTranslation } from "react-i18next";
  * re-seed values pulled from props.
  */
 function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
+  const preset = CROP_GRADE_PRESETS.find((p) => p.match.test(farmer.crop || ""));
+  const availableGrades = preset?.options ?? [];
+  const defaultGrade =
+    farmer.quality?.foreignMatter || (availableGrades.length > 0 ? availableGrades[0].value : "");
+
   const initial = useMemo(
     () => ({
       accepted: farmer.actualWeight || (netWeight > 0 ? String(netWeight) : ""),
       rejected: farmer.quality?.brokenGrain ?? "",
-      grade: farmer.quality?.foreignMatter ?? "",
+      grade: defaultGrade,
       moisture: farmer.quality?.moisture ?? "",
       rejectionReason: farmer.rejectionReason ?? "",
     }),
@@ -32,6 +61,19 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
   );
 
   const emit = (next) => onValuesChange({ ...next });
+
+  useEffect(() => {
+    if (defaultGrade && !farmer.quality?.foreignMatter) {
+      emit({
+        accepted: initial.accepted,
+        rejected: initial.rejected,
+        grade: defaultGrade,
+        moisture: initial.moisture,
+        rejectionReason: initial.rejectionReason,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="mt-6 rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm">
@@ -69,17 +111,43 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
           />
         </label>
 
-        <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black">
-          {t("grade")}
+        <div className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black">
+          <label htmlFor="weighment-grade-input">{t("grade")}</label>
           <input
+            id="weighment-grade-input"
             value={grade}
             onChange={(event) => {
               setGrade(event.target.value);
               emit({ accepted, rejected, grade: event.target.value, moisture, rejectionReason });
             }}
+            placeholder={availableGrades[0]?.value || ""}
             className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
           />
-        </label>
+          {availableGrades.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1.5 pt-1">
+              {availableGrades.map((g) => {
+                const active = grade.trim().toLowerCase() === g.value.toLowerCase();
+                return (
+                  <button
+                    key={g.value}
+                    type="button"
+                    onClick={() => {
+                      setGrade(g.value);
+                      emit({ accepted, rejected, grade: g.value, moisture, rejectionReason });
+                    }}
+                    className={`rounded-lg border px-2 py-1 text-xs font-semibold uppercase tracking-wider transition ${
+                      active
+                        ? "border-emerald-600 bg-emerald-600 text-white"
+                        : "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
+                    }`}
+                  >
+                    {g.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black">
           {t("moisture")} (%)

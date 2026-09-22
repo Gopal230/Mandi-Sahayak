@@ -152,6 +152,7 @@ export function useOfficerQueue() {
               ? ""
               : String(Number(payment.ratePerQuintalPaise) / 100),
           paymentBlockedReason: payment?.blockedReason ?? "",
+          grade: procurement?.grade ?? "",
           lateMinutes: "",
           paymentStatus:
             payment?.status === "PAID"
@@ -352,7 +353,7 @@ export function useOfficerQueue() {
   );
 
   const handlePaymentStatusChange = useCallback(
-    async (bookingCode, nextStatus, paymentReference) => {
+    async (bookingCode, nextStatus, paymentReference, grade) => {
       const statusMap = {
         Processing: "INITIATED",
         Cleared: "PAID",
@@ -367,6 +368,7 @@ export function useOfficerQueue() {
             bookingCode,
             backendStatus,
             paymentReference,
+            grade,
           ),
         // `status` is the internal English token ("Processing"/"Cleared"),
         // resolved to display text at render time via translateOfficerStatus

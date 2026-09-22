@@ -685,6 +685,8 @@
   "requiredBeforeClearing": "Required before marking this payment cleared.",
   "moveToProcessingFirst": "Move this payment to {{status}} before marking it cleared.",
   "enterTransferReferenceFirst": "Enter the transfer reference before clearing this payment.",
+  "gradeRequiredTitle": "Crop Grade Required for MSP Calculation",
+  "selectGradePrompt": "Select the crop grade to determine the support price and unblock this payment:",
   "clearedPaymentsHeading": "Cleared payments",
   "dailyCollection": "Daily collection",
   "slotsClearedCount_one": "{{count}} slot cleared",

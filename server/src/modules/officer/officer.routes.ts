@@ -58,6 +58,7 @@ const QualitySchema = z.object({
 const PaymentSchema = z.object({
   status: z.enum(['PENDING', 'INITIATED', 'PAID', 'FAILED', 'ON_HOLD']),
   paymentReference: z.string().trim().min(1).max(120).optional(),
+  grade: z.string().trim().min(1).max(64).optional(),
 });
 
 function parse<T extends z.ZodTypeAny>(schema: T, body: unknown): z.infer<T> {
@@ -305,6 +306,7 @@ export function buildOfficerRouter(): Router {
       body.status,
       body.paymentReference ?? null,
       ctxOf(req),
+      body.grade ?? null,
     );
   });
 

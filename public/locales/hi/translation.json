@@ -685,6 +685,8 @@
   "requiredBeforeClearing": "इस भुगतान को पूर्ण चिह्नित करने से पहले आवश्यक है।",
   "moveToProcessingFirst": "पूर्ण चिह्नित करने से पहले इस भुगतान को {{status}} में ले जाएँ।",
   "enterTransferReferenceFirst": "इस भुगतान को पूर्ण करने से पहले हस्तांतरण संदर्भ दर्ज करें।",
+  "gradeRequiredTitle": "समर्थन मूल्य के लिए फसल का ग्रेड आवश्यक है",
+  "selectGradePrompt": "न्यूनतम समर्थन मूल्य (MSP) निर्धारित करने और भुगतान आगे बढ़ाने के लिए फसल का ग्रेड चुनें:",
   "clearedPaymentsHeading": "पूर्ण भुगतान",
   "dailyCollection": "दैनिक संग्रह",
   "slotsClearedCount_one": "{{count}} स्लॉट पूर्ण हुआ",
