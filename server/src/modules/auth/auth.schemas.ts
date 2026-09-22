@@ -112,16 +112,35 @@ export const StaffLoginSchema = z.object({
  * administrator. Twelve characters with no composition rule is the guidance
  * this project already follows for staff credentials.
  */
-export const StaffRegisterSchema = z.object({
-  fullName: FullNameSchema,
-  phone: PhoneSchema,
-  districtId: z.string().uuid("DISTRICT_ID_INVALID"),
-  centreId: z.string().uuid("CENTRE_ID_INVALID"),
-  cropIds: z
-    .array(z.string().uuid("CROP_ID_INVALID"))
-    .min(1, "CROP_ID_INVALID"),
-  consent: ConsentSchema,
-});
+/**
+ * Quintals of storage the centre has for one crop, keyed by crop id. Required
+ * for every crop in `cropIds` (checked below): the dashboard's crop-wise
+ * storage table has nothing to show otherwise.
+ */
+export const CropStorageQuintalsSchema = z.record(
+  z.string().uuid(),
+  z.number().positive().max(100000, "CROP_STORAGE_CAPACITY_TOO_LARGE"),
+);
+
+export const StaffRegisterSchema = z
+  .object({
+    fullName: FullNameSchema,
+    phone: PhoneSchema,
+    districtId: z.string().uuid("DISTRICT_ID_INVALID"),
+    centreId: z.string().uuid("CENTRE_ID_INVALID"),
+    cropIds: z
+      .array(z.string().uuid("CROP_ID_INVALID"))
+      .min(1, "CROP_ID_INVALID"),
+    cropStorageQuintals: CropStorageQuintalsSchema,
+    consent: ConsentSchema,
+  })
+  .refine(
+    (v) => v.cropIds.every((id) => typeof v.cropStorageQuintals[id] === "number"),
+    {
+      message: "CROP_STORAGE_REQUIRED",
+      path: ["cropStorageQuintals"],
+    },
+  );
 export type StaffRegisterInput = z.infer<typeof StaffRegisterSchema>;
 
 export const UpdateMeSchema = z

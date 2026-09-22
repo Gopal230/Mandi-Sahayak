@@ -269,8 +269,12 @@ export async function submitOfficerRegistration(
   );
 
   for (const cropId of input.cropIds) {
-    const existingConfig = await client.query(
-      `SELECT id FROM centre_crop_configurations
+    // Quintals -> kg. The schema's cross-field refine guarantees every
+    // cropId has an entry here.
+    const storageCapacityKg = input.cropStorageQuintals[cropId] * 100;
+
+    const existingConfig = await client.query<{ id: string; storage_capacity_kg: string | null }>(
+      `SELECT id, storage_capacity_kg FROM centre_crop_configurations
         WHERE centre_id = $1 AND crop_id = $2 AND is_active = true
           AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)`,
       [input.centreId, cropId],
@@ -299,11 +303,21 @@ export async function submitOfficerRegistration(
         await client.query(
           `INSERT INTO centre_crop_configurations (
              centre_id, crop_id, season_id, marketing_year, is_active,
-             effective_from, effective_to, data_type, configured_by_user_id, configuration_note
-           ) VALUES ($1, $2, $3, $4, true, CURRENT_DATE, NULL, 'CONFIGURED', $5, 'Configured during officer registration')`,
-          [input.centreId, cropId, seasonId, marketingYear, userId],
+             effective_from, effective_to, data_type, configured_by_user_id, configuration_note,
+             storage_capacity_kg
+           ) VALUES ($1, $2, $3, $4, true, CURRENT_DATE, NULL, 'CONFIGURED', $5, 'Configured during officer registration', $6)`,
+          [input.centreId, cropId, seasonId, marketingYear, userId, storageCapacityKg],
         );
       }
+    } else if (existingConfig.rows[0].storage_capacity_kg === null) {
+      // An earlier officer already configured this crop at this centre but
+      // without a capacity (e.g. before this field existed). Fill it in
+      // rather than leaving the dashboard with nothing to show; a capacity
+      // someone already recorded is left alone.
+      await client.query(
+        `UPDATE centre_crop_configurations SET storage_capacity_kg = $1 WHERE id = $2`,
+        [storageCapacityKg, existingConfig.rows[0].id],
+      );
     }
   }
 

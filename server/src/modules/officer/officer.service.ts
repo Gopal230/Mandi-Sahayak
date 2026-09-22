@@ -735,6 +735,34 @@ export async function centreOverview(centreId: string, serviceDate: string, time
   };
 }
 
+/**
+ * Crop-wise storage summary for the dashboard: capacity recorded at officer
+ * registration against grain actually on hand (COMPLETED bookings).
+ */
+export async function centreStorageSummary(centreId: string) {
+  const rows = await repo.centreCropStorage(centreId);
+
+  return rows.map((row) => {
+    const capacityKg = num(row.storage_capacity_kg);
+    const occupiedKg = num(row.occupied_kg) ?? 0;
+    const availableKg = capacityKg === null ? null : Math.max(capacityKg - occupiedKg, 0);
+    const filledPercent =
+      capacityKg && capacityKg > 0
+        ? Math.min(100, Math.round(((capacityKg - (availableKg ?? 0)) / capacityKg) * 100))
+        : null;
+
+    return {
+      cropId: row.crop_id,
+      canonicalName: row.canonical_name,
+      capacityKg,
+      occupiedKg,
+      availableKg,
+      filledPercent,
+      reasonCode: capacityKg === null ? 'NO_STORAGE_CAPACITY_CONFIGURED' : null,
+    };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Farmer reads
 // ---------------------------------------------------------------------------

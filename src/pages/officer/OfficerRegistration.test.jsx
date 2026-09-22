@@ -69,6 +69,14 @@ async function pickCrop(user, cropName) {
   await user.click(await screen.findByRole("checkbox", { name: cropName }));
 }
 
+/** Fills the per-crop storage capacity input that appears once a crop is picked. */
+async function fillCropStorage(user, cropName, quintals) {
+  const input = await screen.findByLabelText(
+    new RegExp(`${cropName} storage capacity`, "i"),
+  );
+  await user.type(input, String(quintals));
+}
+
 describe("/staff-register — District -> Centre, crops independent", () => {
   it("keeps the centre shut until a district is chosen, and lists the full crop catalog regardless", async () => {
     const user = userEvent.setup();
@@ -179,6 +187,8 @@ describe("/staff-register — District -> Centre, crops independent", () => {
 
     await pickCrop(user, "Wheat");
     await pickCrop(user, "Paddy");
+    await fillCropStorage(user, "Wheat", 120);
+    await fillCropStorage(user, "Paddy", 80);
 
     await user.type(screen.getByLabelText("Full name"), "Valid Officer");
     await user.type(screen.getByLabelText("Mobile Number"), "9812345678");
@@ -195,6 +205,10 @@ describe("/staff-register — District -> Centre, crops independent", () => {
     expect(body.districtId).toBe(ALIGARH);
     expect(body.centreId).toBe(registrationCentres[0].id);
     expect(body.cropIds.sort()).toEqual([PADDY, WHEAT].sort());
+    expect(body.cropStorageQuintals).toEqual({
+      [WHEAT]: 120,
+      [PADDY]: 80,
+    });
   });
 
   it("requires at least one crop", async () => {

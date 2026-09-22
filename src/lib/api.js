@@ -385,6 +385,14 @@ export const api = {
 
   officerCentres: (signal) => request("GET", "/officer/centres", { signal }),
 
+  /** Crop-wise storage capacity (from officer registration) vs. grain on hand. */
+  officerCentreStorage: (centreId, signal) =>
+    request(
+      "GET",
+      `/officer/centres/${encodeURIComponent(centreId)}/storage`,
+      { signal },
+    ),
+
   /** `date` defaults to today in the CENTRE's timezone, never the browser's. */
   centreBookings: (centreId, { date, status } = {}, signal) =>
     request(

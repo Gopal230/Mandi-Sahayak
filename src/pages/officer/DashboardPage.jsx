@@ -10,7 +10,7 @@ const DashboardPage = ({
   farmers = [],
   morningSetup,
   onSaveMorningSetup,
-  storage = [],
+  storageSummary = [],
 }) => {
   const { t } = useTranslation();
   const [form, setForm] = useState({
@@ -103,22 +103,6 @@ const DashboardPage = ({
     (form.slotsOpen ?? 0) - activeFarmers.length,
     0,
   );
-
-  const dashboardStorage = useMemo(() => {
-    const purchasedByCrop = farmers.reduce((totals, farmer) => {
-      if (!farmer.reportSaved && farmer.status !== "Cleared") return totals;
-
-      const crop = farmer.crop || "Other";
-      totals[crop] = (totals[crop] || 0) +
-        Number(farmer.actualWeight || farmer.quantity || 0);
-      return totals;
-    }, {});
-
-    return storage.map((crop) => ({
-      ...crop,
-      stock: Number(crop.stock || 0) + (purchasedByCrop[crop.crop] || 0),
-    }));
-  }, [farmers, storage]);
 
   const summary = [
     {
@@ -362,64 +346,72 @@ const DashboardPage = ({
       </div>
 
       <div className="rounded-[26px] border border-emerald-200 bg-white p-5 shadow-sm shadow-emerald-200/30">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black">
-              {t("storageOverview")}
-            </p>
-            <h3 className="mt-2 text-lg font-bold text-black">
-              {t("cropWiseStorageSummary")}
-            </h3>
+        <div className="mb-4">
+          <h3 className="text-lg font-bold text-black">
+            {t("cropWiseStorageSummary")}
+          </h3>
+        </div>
+
+        {storageSummary.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/60 p-4 text-sm text-black">
+            {t("noCropStorageConfigured")}
           </div>
-        </div>
+        ) : (
+          <div className="overflow-hidden rounded-2xl border border-emerald-200">
+            <table className="min-w-full divide-y divide-emerald-200 text-left text-sm">
+              <thead className="bg-emerald-50 text-black">
+                <tr>
+                  <th className="px-3 py-2 font-bold">{t("crop")}</th>
+                  <th className="px-3 py-2 font-bold">{t("totalCapacity")}</th>
+                  <th className="px-3 py-2 font-bold">{t("availableSpace")}</th>
+                  <th className="px-3 py-2 font-bold">{t("filled")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-emerald-100 bg-white">
+                {storageSummary.map((crop) => {
+                  const capacityQuintal =
+                    crop.capacityKg === null
+                      ? null
+                      : Number(crop.capacityKg) / 100;
+                  const availableQuintal =
+                    crop.availableKg === null
+                      ? null
+                      : Number(crop.availableKg) / 100;
 
-        <div className="overflow-hidden rounded-2xl border border-emerald-200">
-          <table className="min-w-full divide-y divide-emerald-200 text-left text-sm">
-            <thead className="bg-emerald-50 text-black">
-              <tr>
-                <th className="px-3 py-2 font-bold">{t("crop")}</th>
-                <th className="px-3 py-2 font-bold">{t("msp")}</th>
-                <th className="px-3 py-2 font-bold">{t("totalCapacity")}</th>
-                <th className="px-3 py-2 font-bold">{t("availableSpace")}</th>
-                <th className="px-3 py-2 font-bold">{t("filled")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-emerald-100 bg-white">
-              {dashboardStorage.map((crop) => {
-                const capacity = Number(crop.capacity || 0);
-                const available = Math.max(
-                  capacity - Number(crop.stock || 0),
-                  0,
-                );
-                const filledPercent =
-                  capacity > 0
-                    ? Math.min(100, ((capacity - available) / capacity) * 100)
-                    : 0;
-                const msp = Number(form.mspRates?.[crop.crop] ?? 0);
-
-                return (
-                  <tr key={crop.crop}>
-                    <td className="px-3 py-2 font-semibold text-black">
-                      {crop.crop}
-                    </td>
-                    <td className="px-3 py-2 text-black">
-                      ₹{msp.toLocaleString("en-IN")}
-                    </td>
-                    <td className="px-3 py-2 text-black">
-                      {capacity.toLocaleString("en-IN")} {t("quintal")}
-                    </td>
-                    <td className="px-3 py-2 font-semibold text-black">
-                      {available.toLocaleString("en-IN")} {t("quintal")}
-                    </td>
-                    <td className="px-3 py-2 font-semibold text-black">
-                      {filledPercent.toFixed(0)}%
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                  return (
+                    <tr key={crop.cropId}>
+                      <td className="px-3 py-2 font-semibold text-black">
+                        {crop.canonicalName}
+                      </td>
+                      {capacityQuintal === null ? (
+                        <td
+                          className="px-3 py-2 text-black"
+                          colSpan={3}
+                        >
+                          {t("noCropStorageConfiguredForCrop")}
+                        </td>
+                      ) : (
+                        <>
+                          <td className="px-3 py-2 text-black">
+                            {capacityQuintal.toLocaleString("en-IN")}{" "}
+                            {t("quintal")}
+                          </td>
+                          <td className="px-3 py-2 font-semibold text-black">
+                            {availableQuintal.toLocaleString("en-IN")}{" "}
+                            {t("quintal")}
+                          </td>
+                          <td className="px-3 py-2 font-semibold text-black">
+                            {crop.filledPercent}%
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
     </div>

@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../auth/context";
 import LanguageToggle from "../../components/LanguageToggle";
+import api from "../../lib/api";
 import { useFaramqueueState } from "../../hooks/useFaramqueueState";
+import useApiResource from "../../hooks/useApiResource";
 import useOfficerQueue from "../../hooks/useOfficerQueue";
 import CentrePicker from "../../components/CentrePicker";
 import { ErrorState, Loading } from "../../components/StateViews";
@@ -65,10 +67,17 @@ function OfficerPortal() {
     markFarmerArrived,
   } = useOfficerQueue();
 
-  // Centre configuration and storage have no officer endpoints — they are
-  // admin territory (officer.md §2.1) — so those two screens stay on the
-  // prototype's local state and are labelled as such.
-  const { storage, morningSetup, setMorningSetup } = useFaramqueueState();
+  // Centre configuration (weighbridge status, slot count, shift hours) has no
+  // officer endpoint — that screen stays on the prototype's local state.
+  const { morningSetup, setMorningSetup } = useFaramqueueState();
+
+  // Crop-wise storage: capacity recorded at officer registration, against
+  // grain actually on hand (server-computed from COMPLETED bookings).
+  const storageSummary = useApiResource(
+    (signal) => api.officerCentreStorage(centre.centreId, signal),
+    [centre.centreId],
+    { enabled: Boolean(centre.centreId) },
+  );
 
   async function handleSignOut() {
     await signOut();
@@ -192,7 +201,7 @@ function OfficerPortal() {
                   <DashboardPage
                     farmers={farmers}
                     morningSetup={morningSetup}
-                    storage={storage}
+                    storageSummary={storageSummary.data?.crops ?? []}
                     onSaveMorningSetup={setMorningSetup}
                   />
                 }
@@ -237,7 +246,6 @@ function OfficerPortal() {
                 element={
                   <ReportsPage
                     farmers={selectedDateEntries}
-                    storage={storage}
                     selectedDate={selectedDate}
                     selectedFarmerId={selectedReportFarmerId}
                     savedFarmerId={savedReportFarmerId}

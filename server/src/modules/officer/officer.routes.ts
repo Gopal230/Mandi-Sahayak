@@ -26,6 +26,7 @@ import type { OfficerCtx } from './officer.service.ts';
 import {
   cancelAtCentre,
   centreOverview,
+  centreStorageSummary,
   completeProcurement,
   getBooking,
   getOwnPayment,
@@ -166,6 +167,33 @@ export function buildOfficerRouter(): Router {
         : localDateOf(new Date(), timezone);
 
       sendData(res, 200, await centreOverview(centreId, date, timezone));
+    }),
+  );
+
+  // -------------------------------------------------------------------------
+  // GET /officer/centres/:centreId/storage
+  //
+  // Crop-wise storage capacity (recorded at officer registration) against
+  // grain actually on hand from COMPLETED bookings. Separate from /overview
+  // because it has nothing to do with the service day and doesn't take a
+  // `date` — capacity and current stock are both centre-wide state.
+  // -------------------------------------------------------------------------
+  declareRoute({
+    method: 'GET',
+    path: `${BASE}/officer/centres/:centreId/storage`,
+    auth: { kind: 'permission', permission: 'booking.read.centre' },
+    csrf: false,
+    summary: 'Crop-wise storage capacity and current occupancy for a centre.',
+  });
+  router.get(
+    '/officer/centres/:centreId/storage',
+    requirePermission('booking.read.centre'),
+    asyncHandler(async (req, res) => {
+      const centreId = parse(z.string().uuid('CENTRE_ID_INVALID'), req.params.centreId);
+
+      if (!actorMayActOnCentre(req.actor!, centreId)) throw notFound('Centre not found');
+
+      sendData(res, 200, { centreId, crops: await centreStorageSummary(centreId) });
     }),
   );
 

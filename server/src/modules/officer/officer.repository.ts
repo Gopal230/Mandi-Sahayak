@@ -304,6 +304,50 @@ export async function centreCropRates(
   return res.rows;
 }
 
+/**
+ * Crop-wise storage for one centre: the capacity an officer recorded at
+ * registration (or a later configuration edit), against how much of that
+ * crop has actually been procured (COMPLETED bookings only — the storage
+ * figure means grain physically on hand, not grain merely booked).
+ *
+ * One row per active crop configuration, even one with no capacity recorded
+ * yet (`storage_capacity_kg IS NULL`) — the dashboard says so rather than
+ * showing a fabricated number.
+ */
+export async function centreCropStorage(
+  centreId: string,
+): Promise<
+  Array<{
+    crop_id: string;
+    canonical_name: string;
+    storage_capacity_kg: string | null;
+    occupied_kg: string;
+  }>
+> {
+  const res = await query<{
+    crop_id: string;
+    canonical_name: string;
+    storage_capacity_kg: string | null;
+    occupied_kg: string;
+  }>(
+    `SELECT c.id AS crop_id, c.canonical_name,
+            ccc.storage_capacity_kg::text AS storage_capacity_kg,
+            COALESCE(SUM(pr.accepted_quantity_kg), 0)::text AS occupied_kg
+       FROM centre_crop_configurations ccc
+       JOIN crops c ON c.id = ccc.crop_id
+       LEFT JOIN bookings b
+              ON b.centre_id = ccc.centre_id
+             AND b.crop_id = ccc.crop_id
+             AND b.status = 'COMPLETED'
+       LEFT JOIN procurements pr ON pr.booking_id = b.id
+      WHERE ccc.centre_id = $1 AND ccc.is_active
+      GROUP BY c.id, c.canonical_name, ccc.storage_capacity_kg
+      ORDER BY c.canonical_name`,
+    [centreId],
+  );
+  return res.rows;
+}
+
 // ---------------------------------------------------------------------------
 // Procurement
 // ---------------------------------------------------------------------------

@@ -29,6 +29,9 @@ function OfficerRegistration() {
   const [districtId, setDistrictId] = useState("");
   const [centreId, setCentreId] = useState("");
   const [cropIds, setCropIds] = useState([]);
+  // Storage capacity in quintals, keyed by crop id. One entry per selected
+  // crop; entries for a crop that gets deselected are dropped along with it.
+  const [cropStorage, setCropStorage] = useState({});
   const [consent, setConsent] = useState(false);
 
   const [fieldErrors, setFieldErrors] = useState({});
@@ -85,6 +88,10 @@ function OfficerRegistration() {
 
     if (cropIds.length === 0) {
       errors.cropIds = t("codes.fieldErrors.CROP_ID_INVALID");
+    } else if (
+      cropIds.some((id) => !(Number(cropStorage[id]) > 0))
+    ) {
+      errors.cropStorage = t("codes.fieldErrors.CROP_STORAGE_REQUIRED");
     }
 
     if (!consent) {
@@ -109,12 +116,17 @@ function OfficerRegistration() {
     setFieldErrors({});
 
     try {
+      const cropStorageQuintals = Object.fromEntries(
+        cropIds.map((id) => [id, Number(cropStorage[id])]),
+      );
+
       const challenge = await api.staffRegister({
         fullName: fullName.trim(),
         phone: `+91${phone}`,
         districtId,
         centreId,
         cropIds,
+        cropStorageQuintals,
         consent: { policyVersion: CONSENT_POLICY_VERSION, accepted: true },
       });
 
@@ -486,7 +498,15 @@ function OfficerRegistration() {
                       value={cropIds}
                       onChange={(next) => {
                         setCropIds(next);
+                        setCropStorage((previous) =>
+                          Object.fromEntries(
+                            Object.entries(previous).filter(([id]) =>
+                              next.includes(id),
+                            ),
+                          ),
+                        );
                         clearFieldError("cropIds");
+                        clearFieldError("cropStorage");
                       }}
                       placeholder={t("selectCrops") || "Select crops"}
                       error={Boolean(fieldErrors.cropIds)}
@@ -498,6 +518,65 @@ function OfficerRegistration() {
                     <p className="mt-2 text-xs font-semibold text-red-700">
                       {fieldErrors.cropIds}
                     </p>
+                  )}
+
+                  {cropIds.length > 0 && (
+                    <div className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-bold text-black">
+                        {t("cropStorageCapacityQuintal")}
+                      </p>
+                      <p className="text-xs leading-5 text-black">
+                        {t("cropStorageCapacityHint")}
+                      </p>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {cropIds.map((id) => {
+                          const crop = cropOptions.find(
+                            (option) => option.id === id,
+                          );
+
+                          return (
+                            <div key={id}>
+                              <label
+                                htmlFor={`crop-storage-${id}`}
+                                className="mb-1.5 block text-xs font-semibold text-black"
+                              >
+                                {t("cropStorageCapacityForCrop", {
+                                  crop: crop?.canonicalName ?? id,
+                                })}
+                              </label>
+
+                              <input
+                                id={`crop-storage-${id}`}
+                                type="number"
+                                min="0"
+                                step="any"
+                                inputMode="decimal"
+                                value={cropStorage[id] ?? ""}
+                                onChange={(event) => {
+                                  setCropStorage((previous) => ({
+                                    ...previous,
+                                    [id]: event.target.value,
+                                  }));
+                                  clearFieldError("cropStorage");
+                                }}
+                                placeholder={t("quintal")}
+                                className={inputClasses(
+                                  Boolean(fieldErrors.cropStorage) &&
+                                    !(Number(cropStorage[id]) > 0),
+                                )}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {fieldErrors.cropStorage && (
+                        <p className="text-xs font-semibold text-red-700">
+                          {fieldErrors.cropStorage}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
