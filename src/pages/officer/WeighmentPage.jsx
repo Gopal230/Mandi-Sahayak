@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 /**
- * The accepted / rejected / grade / moisture inputs for the quality-check
- * step. A component of its own, keyed by `${bookingCode}:${apiStatus}` from
- * the parent, so switching farmers (or a booking moving into QUALITY_CHECK)
+ * The accepted / rejected / moisture inputs for the quality-check step. A
+ * component of its own, keyed by `${bookingCode}:${apiStatus}` from the
+ * parent, so switching farmers (or a booking moving into QUALITY_CHECK)
  * remounts it with fresh initial state instead of needing an effect to
  * re-seed values pulled from props.
  */
@@ -13,7 +13,6 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
     () => ({
       accepted: farmer.actualWeight || (netWeight > 0 ? String(netWeight) : ""),
       rejected: farmer.quality?.brokenGrain ?? "",
-      grade: farmer.quality?.foreignMatter ?? "",
       moisture: farmer.quality?.moisture ?? "",
       rejectionReason: farmer.rejectionReason ?? "",
     }),
@@ -25,7 +24,6 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
 
   const [accepted, setAccepted] = useState(initial.accepted);
   const [rejected, setRejected] = useState(initial.rejected);
-  const [grade, setGrade] = useState(initial.grade);
   const [moisture, setMoisture] = useState(initial.moisture);
   const [rejectionReason, setRejectionReason] = useState(
     initial.rejectionReason,
@@ -38,9 +36,6 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-black">
         {t("qualityCheckRequired")}
       </p>
-      <p className="mt-1 text-xs leading-5 text-black">
-        {t("gradeDecidesPrice")}
-      </p>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black">
@@ -50,7 +45,7 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
             value={accepted}
             onChange={(event) => {
               setAccepted(event.target.value);
-              emit({ accepted: event.target.value, rejected, grade, moisture, rejectionReason });
+              emit({ accepted: event.target.value, rejected, moisture, rejectionReason });
             }}
             className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
           />
@@ -63,19 +58,7 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
             value={rejected}
             onChange={(event) => {
               setRejected(event.target.value);
-              emit({ accepted, rejected: event.target.value, grade, moisture, rejectionReason });
-            }}
-            className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
-          />
-        </label>
-
-        <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-black">
-          {t("grade")}
-          <input
-            value={grade}
-            onChange={(event) => {
-              setGrade(event.target.value);
-              emit({ accepted, rejected, grade: event.target.value, moisture, rejectionReason });
+              emit({ accepted, rejected: event.target.value, moisture, rejectionReason });
             }}
             className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
           />
@@ -88,7 +71,7 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
             value={moisture}
             onChange={(event) => {
               setMoisture(event.target.value);
-              emit({ accepted, rejected, grade, moisture: event.target.value, rejectionReason });
+              emit({ accepted, rejected, moisture: event.target.value, rejectionReason });
             }}
             className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
           />
@@ -101,7 +84,7 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
               value={rejectionReason}
               onChange={(event) => {
                 setRejectionReason(event.target.value);
-                emit({ accepted, rejected, grade, moisture, rejectionReason: event.target.value });
+                emit({ accepted, rejected, moisture, rejectionReason: event.target.value });
               }}
               className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
             />
@@ -121,7 +104,6 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
   const [qualityValues, setQualityValues] = useState({
     accepted: "",
     rejected: "",
-    grade: "",
     moisture: "",
     rejectionReason: "",
   });
@@ -175,13 +157,11 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
     if (!selectedFarmer) return;
 
     if (isQualityStage) {
-      const { accepted, rejected, grade, moisture, rejectionReason } =
-        qualityValues;
+      const { accepted, rejected, moisture, rejectionReason } = qualityValues;
 
       await onSaveReport?.(selectedFarmer.id, {
         actualWeight: accepted || String(netWeight || 0),
         rejectedWeight: rejected || "0",
-        grade,
         moisture,
         rejectionReason,
       });
