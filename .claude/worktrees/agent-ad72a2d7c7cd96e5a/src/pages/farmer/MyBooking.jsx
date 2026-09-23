@@ -1,0 +1,362 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+
+import api from "../../lib/api";
+import useApiResource from "../../hooks/useApiResource";
+import {
+  ACTIVE_BOOKING_STATUSES,
+  translateDisplayStatus,
+  translateError,
+} from "../../lib/codes";
+import {
+  formatDate,
+  formatQuantity,
+  formatTimeRange,
+  kgToQuintal,
+} from "../../lib/format";
+import FarmerLayout from "../../components/FarmerLayout";
+import {
+  DataTypeNote,
+  EmptyState,
+  ErrorState,
+  Loading,
+  StatusBadge,
+} from "../../components/StateViews";
+
+function MyBooking() {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+
+  const [showHistory, setShowHistory] = useState(false);
+  const [confirming, setConfirming] = useState(null);
+  const [reason, setReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
+  const [notice, setNotice] = useState(null);
+
+  const bookings = useApiResource(
+    (signal) => api.myBookings(showHistory, signal),
+    [showHistory],
+  );
+
+  const locale = i18n.language;
+  const all = bookings.data ?? [];
+
+  const active = all.filter((booking) =>
+    ACTIVE_BOOKING_STATUSES.has(booking.status),
+  );
+
+  const past = all.filter(
+    (booking) => !ACTIVE_BOOKING_STATUSES.has(booking.status),
+  );
+
+  async function handleCancel() {
+    if (!confirming) return;
+
+    setCancelling(true);
+    setCancelError(null);
+
+    try {
+      await api.cancelBooking(
+        confirming.bookingCode,
+        reason.trim() || undefined,
+      );
+
+      setConfirming(null);
+      setReason("");
+      setNotice(t("bookingCancelled"));
+      bookings.reload();
+    } catch (error) {
+      setCancelError(error);
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  function renderBooking(booking) {
+    const zone = booking.centre?.timezone;
+    const cancellable = booking.status === "CONFIRMED";
+
+    return (
+      <article
+        key={booking.bookingCode}
+        className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:shadow-md sm:p-5"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="truncate font-semibold text-black">
+              {booking.centre?.name}
+            </h3>
+
+            <p className="mt-0.5 text-xs text-black">
+              {booking.bookingCode}
+            </p>
+          </div>
+
+          <StatusBadge
+            status={booking.status}
+            label={translateDisplayStatus(t, booking.displayStatus)}
+          />
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+          <div className="rounded-xl bg-slate-50 p-3">
+            <p className="text-xs text-black">{t("crop")}</p>
+            <p className="mt-1 font-semibold text-black">
+              {booking.crop?.name}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-slate-50 p-3">
+            <p className="text-xs text-black">{t("quantity")}</p>
+            <p className="mt-1 font-semibold text-black">
+              {formatQuantity(
+                kgToQuintal(booking.quantityKg),
+                locale,
+              )}{" "}
+              {t("quintal")}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-slate-50 p-3">
+            <p className="text-xs text-black">{t("date")}</p>
+            <p className="mt-1 font-semibold text-black">
+              {formatDate(
+                booking.serviceDate,
+                zone,
+                locale,
+              )}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-slate-50 p-3">
+            <p className="text-xs text-black">
+              {t("tokenNumberLabel")}
+            </p>
+            <p className="mt-1 font-semibold text-black">
+              {booking.tokenNumber ?? "—"}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 rounded-xl bg-emerald-50 p-3">
+          <p className="text-xs text-black">
+            {t("arriveBy")}
+          </p>
+
+          <p className="mt-1 text-sm font-semibold text-black">
+            {formatTimeRange(
+              booking.scheduledStartAt,
+              booking.processingEndAt,
+              zone,
+              locale,
+            ) ?? "—"}
+          </p>
+        </div>
+
+        <DataTypeNote dataType={booking.centre?.dataType} />
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() =>
+              navigate("/queue", {
+                state: {
+                  bookingCode: booking.bookingCode,
+                },
+              })
+            }
+            className="rounded-xl bg-[#126d34] px-3 py-3 text-xs font-semibold text-white transition hover:bg-[#13562c]"
+          >
+            {t("queueStatus")}
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              navigate("/procurement", {
+                state: {
+                  bookingCode: booking.bookingCode,
+                },
+              })
+            }
+            className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs font-semibold text-black transition hover:bg-slate-50"
+          >
+            {t("procurement")}
+          </button>
+
+          {cancellable && (
+            <button
+              type="button"
+              onClick={() => {
+                setConfirming(booking);
+                setCancelError(null);
+                setReason("");
+              }}
+              className="rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-xs font-semibold text-black transition hover:bg-red-100 sm:col-span-2"
+            >
+              {t("cancelBooking")}
+            </button>
+          )}
+        </div>
+      </article>
+    );
+  }
+
+  return (
+    <FarmerLayout
+      title={t("myBooking")}
+      subtitle={t("slotDetails")}
+      onBack={() => navigate("/dashboard")}
+    >
+      {notice && (
+        <div className="mb-4 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-black">
+          {notice}
+        </div>
+      )}
+
+      {bookings.error && (
+        <ErrorState
+          error={bookings.error}
+          onRetry={bookings.reload}
+        />
+      )}
+
+      {bookings.initialLoading && <Loading />}
+
+      {!bookings.initialLoading && !bookings.error && (
+        <>
+          {active.length === 0 && past.length === 0 ? (
+            <EmptyState
+              icon="🎟️"
+              title={t("noBookingsYet")}
+              description={t("noBookingsDescription")}
+              action={
+                <button
+                  type="button"
+                  onClick={() => navigate("/book-slot")}
+                  className="mt-5 w-full rounded-xl bg-[#126d34] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#13562c]"
+                >
+                  {t("bookSlot")} →
+                </button>
+              }
+            />
+          ) : (
+            <div className="space-y-4">
+              {active.length > 0 && (
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-bold text-black">
+                    {t("activeBookings")}
+                  </h2>
+
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-black">
+                    {active.length}
+                  </span>
+                </div>
+              )}
+
+              {active.map(renderBooking)}
+
+              {showHistory && past.length > 0 && (
+                <>
+                  <h2 className="pt-3 text-sm font-bold text-black">
+                    {t("pastBookings")}
+                  </h2>
+
+                  {past.map(renderBooking)}
+                </>
+              )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() =>
+              setShowHistory((value) => !value)
+            }
+            className="mt-5 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-black transition hover:bg-slate-50"
+          >
+            {showHistory
+              ? t("hideHistory")
+              : t("showHistory")}
+          </button>
+        </>
+      )}
+
+      {confirming && (
+        <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl sm:p-6">
+            <h3 className="text-lg font-bold text-black">
+              {t("cancelBookingConfirm")}
+            </h3>
+
+            <p className="mt-1 text-sm text-black">
+              {t("cancelBookingWarning")}
+            </p>
+
+            <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-black">
+              {confirming.bookingCode}
+            </p>
+
+            <label
+              htmlFor="cancelReason"
+              className="mt-4 block text-sm font-semibold text-black"
+            >
+              {t("cancelReason")}
+            </label>
+
+            <input
+              id="cancelReason"
+              type="text"
+              value={reason}
+              maxLength={280}
+              onChange={(event) =>
+                setReason(event.target.value)
+              }
+              placeholder={t("cancelReasonPlaceholder")}
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100"
+            />
+
+            {cancelError && (
+              <ErrorState
+                error={cancelError}
+                className="mt-3"
+              />
+            )}
+
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirming(null)}
+                disabled={cancelling}
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-black transition hover:bg-slate-50"
+              >
+                {t("keepBooking")}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="flex-1 rounded-xl bg-red-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-red-300"
+              >
+                {cancelling
+                  ? t("cancelling")
+                  : t("cancelBooking")}
+              </button>
+            </div>
+
+            {cancelError && (
+              <p className="mt-2 text-center text-xs text-black">
+                {translateError(t, cancelError)}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </FarmerLayout>
+  );
+}
+
+export default MyBooking;

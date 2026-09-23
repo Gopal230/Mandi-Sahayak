@@ -12,6 +12,20 @@ import { generateOtp, hashOtp, verifyOtp } from '../../core/crypto.ts';
 import { AppError, ErrorCodes, unprocessable } from '../../core/errors.ts';
 import { log, maskPhone } from '../../core/logging.ts';
 import { recordDemoOtp } from './demoOtpStore.ts';
+import { isDemoOfficerPhone } from './demoOfficers.ts';
+
+/**
+ * The one memorable code that always works for a seeded demo officer, so a
+ * judge can sign in without reading a code off screen or a server log.
+ *
+ * Applies ONLY when DEMO_MODE is on and the phone is one of the four seeded
+ * demo officers (demoOfficers.ts) — never for a farmer, never for a real
+ * officer, and never at all outside demo mode. Length follows OTP_LENGTH so
+ * it always matches the number of boxes the UI renders.
+ */
+function fixedDemoOtp(length: number): string {
+  return '1'.repeat(length);
+}
 
 export type OtpPurpose = 'FARMER_REGISTER' | 'FARMER_LOGIN' | 'STAFF_2FA';
 
@@ -154,7 +168,12 @@ export async function issueChallenge(
   },
 ): Promise<{ view: ChallengeView; otp: string | null }> {
   const cfg = getConfig();
-  const otp = generateOtp(cfg.OTP_LENGTH);
+  const useFixedOtp =
+    cfg.DEMO_MODE &&
+    !opts.decoy &&
+    opts.purpose === 'STAFF_2FA' &&
+    isDemoOfficerPhone(opts.phone);
+  const otp = useFixedOtp ? fixedDemoOtp(cfg.OTP_LENGTH) : generateOtp(cfg.OTP_LENGTH);
   const expiresAt = new Date(Date.now() + cfg.OTP_TTL_SECONDS * 1000);
 
   const res = await client.query<{
@@ -278,8 +297,16 @@ export async function resendChallenge(
   }
 
   // A resend issues a NEW code and invalidates the old one; it does not extend
-  // the attempt budget.
-  const otp = generateOtp(cfg.OTP_LENGTH);
+  // the attempt budget. Same fixed-code rule as issueChallenge: only demo
+  // officers, only in DEMO_MODE, so the code on screen after a resend is
+  // still the one that will verify.
+  const decoyForFixedCheck = isDecoyChallenge(row);
+  const useFixedOtp =
+    cfg.DEMO_MODE &&
+    !decoyForFixedCheck &&
+    row.purpose === 'STAFF_2FA' &&
+    isDemoOfficerPhone(row.phone_e164);
+  const otp = useFixedOtp ? fixedDemoOtp(cfg.OTP_LENGTH) : generateOtp(cfg.OTP_LENGTH);
   const res = await client.query<{
     id: string;
     expires_at: Date;

@@ -182,14 +182,32 @@ export async function startFarmerLogin(
 // Officer self-registration
 // ---------------------------------------------------------------------------
 
+export type RegistrationRequestSubmitted = {
+  requestId: string;
+  status: 'PENDING';
+};
+
 /**
- * Creates an officer account and starts mobile OTP verification.
+ * Records an officer account APPLICATION. Creates no account.
+ *
+ * THE BUG THIS REPLACES: this function used to insert directly into `users`,
+ * `officers`, `user_roles` and `officer_centre_assignments` — so anyone who
+ * could reach this public, unauthenticated endpoint left it as a live OFFICER
+ * at whichever centre they picked from the dropdown, verified by nothing but
+ * an OTP to a phone they own. That is not an authorization check; it is a
+ * self-service privilege grant. Migration 0017 built
+ * `officer_registration_requests` specifically so this could not happen, and
+ * this function now uses it: a submission here creates one PENDING row and
+ * nothing else. No user, no role, no centre assignment, no centre
+ * configuration write. An administrator with `officer.create` is the only
+ * path from a request to an account (admin.routes.ts, POST
+ * /admin/officer-registration-requests/:id/approve).
  */
 export async function submitOfficerRegistration(
   client: PoolClient,
   input: StaffRegisterInput,
   ctx: RequestCtx,
-): Promise<ChallengeView> {
+): Promise<RegistrationRequestSubmitted> {
   // The centre must exist, be active, and actually sit in the district the
   // applicant named. Trusting the pair would let a mismatched request through
   // and leave an administrator to spot it by eye.
@@ -232,6 +250,11 @@ export async function submitOfficerRegistration(
     );
   }
 
+  // A phone already holding a live account cannot apply again — sign in
+  // instead. A phone with a request already PENDING is blocked by the partial
+  // unique index (officer_registration_requests_one_pending_phone); that
+  // constraint violation is caught below and turned into the same
+  // user-facing conflict, so the two "already in flight" cases read alike.
   const existing = await client.query<{ id: string }>(
     `SELECT id FROM users WHERE phone_e164 = $1`,
     [input.phone],
@@ -243,112 +266,66 @@ export async function submitOfficerRegistration(
     );
   }
 
-  const user = await client.query<{ id: string }>(
-    `INSERT INTO users (full_name, phone_e164, locale)
-     VALUES ($1, $2, 'en') RETURNING id`,
-    [input.fullName, input.phone],
-  );
-  const userId = user.rows[0].id;
-
-  const officer = await client.query<{ id: string }>(
-    `INSERT INTO officers (user_id, created_by_user_id)
-     VALUES ($1, NULL) RETURNING id`,
-    [userId],
-  );
-
-  await client.query(
-    `INSERT INTO user_roles (user_id, role_id)
-     SELECT $1, id FROM roles WHERE code = 'OFFICER'`,
-    [userId],
-  );
-
-  await client.query(
-    `INSERT INTO officer_centre_assignments (officer_id, centre_id)
-     VALUES ($1, $2)`,
-    [officer.rows[0].id, input.centreId],
-  );
-
-  for (const cropId of input.cropIds) {
-    // Quintals -> kg. The schema's cross-field refine guarantees every
-    // cropId has an entry here.
-    const storageCapacityKg = input.cropStorageQuintals[cropId] * 100;
-
-    const existingConfig = await client.query<{ id: string; storage_capacity_kg: string | null }>(
-      `SELECT id, storage_capacity_kg FROM centre_crop_configurations
-        WHERE centre_id = $1 AND crop_id = $2 AND is_active = true
-          AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)`,
-      [input.centreId, cropId],
+  // SAVEPOINT, not a bare try/query: a unique_violation aborts the enclosing
+  // transaction in Postgres. Without rolling back to a savepoint first, the
+  // writeAudit call below would run against an already-aborted transaction
+  // and fail with "current transaction is aborted", masking the real
+  // (perfectly ordinary) conflict behind a 500.
+  let requestId: string;
+  await client.query("SAVEPOINT staff_register_insert");
+  try {
+    const request = await client.query<{ id: string }>(
+      `INSERT INTO officer_registration_requests
+         (full_name, phone_e164, requested_centre_id, requested_district_id,
+          requested_crop_ids, crop_storage_quintals)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id`,
+      [
+        input.fullName,
+        input.phone,
+        input.centreId,
+        input.districtId,
+        input.cropIds,
+        JSON.stringify(input.cropStorageQuintals),
+      ],
     );
+    requestId = request.rows[0].id;
+  } catch (error) {
+    await client.query("ROLLBACK TO SAVEPOINT staff_register_insert");
 
-    if ((existingConfig.rowCount ?? 0) === 0) {
-      const rateInfo = await client.query<{ season_id: string; marketing_year: string }>(
-        `SELECT season_id, marketing_year FROM msp_rates
-         WHERE crop_id = $1
-         ORDER BY (status = 'ACTIVATED') DESC, effective_from DESC NULLS LAST
-         LIMIT 1`,
-        [cropId],
-      );
-
-      let seasonId = rateInfo.rows[0]?.season_id;
-      const marketingYear = rateInfo.rows[0]?.marketing_year ?? "2026-27";
-
-      if (!seasonId) {
-        const defaultSeason = await client.query<{ id: string }>(
-          `SELECT id FROM seasons ORDER BY code ASC LIMIT 1`,
-        );
-        seasonId = defaultSeason.rows[0]?.id;
-      }
-
-      if (seasonId) {
-        await client.query(
-          `INSERT INTO centre_crop_configurations (
-             centre_id, crop_id, season_id, marketing_year, is_active,
-             effective_from, effective_to, data_type, configured_by_user_id, configuration_note,
-             storage_capacity_kg
-           ) VALUES ($1, $2, $3, $4, true, CURRENT_DATE, NULL, 'CONFIGURED', $5, 'Configured during officer registration', $6)`,
-          [input.centreId, cropId, seasonId, marketingYear, userId, storageCapacityKg],
-        );
-      }
-    } else if (existingConfig.rows[0].storage_capacity_kg === null) {
-      // An earlier officer already configured this crop at this centre but
-      // without a capacity (e.g. before this field existed). Fill it in
-      // rather than leaving the dashboard with nothing to show; a capacity
-      // someone already recorded is left alone.
-      await client.query(
-        `UPDATE centre_crop_configurations SET storage_capacity_kg = $1 WHERE id = $2`,
-        [storageCapacityKg, existingConfig.rows[0].id],
+    // Postgres unique_violation. A second application for a phone that
+    // already has one PENDING is a conflict, not a validation failure — the
+    // applicant needs to know an application already exists, not that this
+    // one was malformed.
+    if ((error as { code?: string }).code === "23505") {
+      throw conflict(
+        ErrorCodes.PHONE_ALREADY_REGISTERED,
+        "An application for this phone number is already pending review.",
       );
     }
+    throw error;
   }
 
-  await client.query(
-    `UPDATE reference_versions SET version = version + 1, updated_at = now()
-     WHERE resource = 'procurement_centres'`,
-  );
-
-  const { view } = await issueChallenge(client, {
-    purpose: "STAFF_2FA",
-    phone: input.phone,
-    userId,
-    ip: ctx.ip,
-  });
-
+  // NOTHING ELSE HAPPENS HERE. No user, no officer, no role, no centre
+  // assignment, no centre_crop_configurations write, and — because there is
+  // no account yet to verify — no OTP challenge. `startStaffLogin` reads
+  // `users` by phone; a pending request has no row there and so cannot sign
+  // in, which is the whole point.
   await writeAudit(client, {
     action: AuditActions.OFFICER_REGISTRATION_REQUESTED,
-    entityType: "officer",
-    entityId: officer.rows[0].id,
-    actorUserId: userId,
+    entityType: "officer_registration_request",
+    entityId: requestId,
     actorRole: "SYSTEM",
     actorIp: ctx.ip,
     requestId: ctx.requestId,
     metadata: {
       requestedCentreId: input.centreId,
       cropIds: input.cropIds,
-      approvalRequired: false,
+      approvalRequired: true,
     },
   });
 
-  return view;
+  return { requestId, status: "PENDING" };
 }
 
 // ---------------------------------------------------------------------------

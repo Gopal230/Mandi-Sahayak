@@ -2,10 +2,23 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import api from "../../lib/api";
+import api, { DEMO_OTP_ENABLED } from "../../lib/api";
 import { translateFieldErrors } from "../../lib/codes";
 import LanguageToggle from "../../components/LanguageToggle";
 import { ErrorState } from "../../components/StateViews";
+
+/**
+ * The four officer accounts seeded for the SIH demonstration
+ * (server/imports/0005_demo_officer_accounts.sql). Shown only when the
+ * server is running in demo mode, so this section cannot appear against a
+ * production backend that has no such accounts.
+ */
+const DEMO_OFFICERS = [
+  { label: "Aligarh", phone: "9999900001" },
+  { label: "Mathura", phone: "9999900002" },
+  { label: "Hathras", phone: "9999900003" },
+  { label: "Bulandshahr", phone: "9999900004" },
+];
 
 /**
  * Staff sign-in.
@@ -28,24 +41,17 @@ function OfficerLogin() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(event) {
-    event.preventDefault();
-
-    if (!/^[6-9]\d{9}$/.test(phone)) {
-      setFieldError(t("codes.fieldErrors.PHONE_INVALID_INDIAN_MOBILE"));
-      return;
-    }
-
+  async function submitLogin(mobileNumber) {
     setSubmitting(true);
     setError(null);
     setFieldError(null);
 
     try {
-      const challenge = await api.staffLogin(phone);
+      const challenge = await api.staffLogin(mobileNumber);
 
       navigate("/verify-otp", {
         replace: true,
-        state: { challenge, purpose: "staff", phone },
+        state: { challenge, purpose: "staff", phone: mobileNumber },
       });
     } catch (loginError) {
       const fields = translateFieldErrors(t, loginError);
@@ -58,6 +64,31 @@ function OfficerLogin() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      setFieldError(t("codes.fieldErrors.PHONE_INVALID_INDIAN_MOBILE"));
+      return;
+    }
+
+    await submitLogin(phone);
+  }
+
+  /**
+   * One tap: fills the seeded demo officer's number and starts the same
+   * login call a real officer would make. The account behind it is a real
+   * OFFICER row (server/imports/0005_demo_officer_accounts.sql), so this
+   * exercises the actual login path, not a shortcut around it — the only
+   * thing "demo" about it is that the OTP that follows is fixed rather than
+   * random (see the demo code panel on the next screen).
+   */
+  async function handleDemoLogin(demoPhone) {
+    if (submitting) return;
+    setPhone(demoPhone);
+    await submitLogin(demoPhone);
   }
 
   return (
@@ -100,6 +131,15 @@ function OfficerLogin() {
 
       <main className="mx-auto flex min-h-[calc(100vh-72px)] w-full max-w-[1280px] items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
         <section className="w-full max-w-[500px]">
+          {DEMO_OTP_ENABLED && (
+            <div className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-center">
+              <p className="text-xs font-extrabold uppercase tracking-[0.1em] text-black">
+                {t("demoAccessBanner") ||
+                  "Demo Access — For SIH Prototype Evaluation"}
+              </p>
+            </div>
+          )}
+
           <div className="rounded-[24px] border border-slate-200 bg-white px-5 py-7 shadow-[0_8px_30px_rgba(16,64,42,0.06)] sm:px-8 sm:py-9 lg:px-10 lg:py-10">
             <div className="text-center">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-2xl">
@@ -173,6 +213,33 @@ function OfficerLogin() {
                 {t("otpWillBeSent")}
               </p>
             </form>
+
+            {DEMO_OTP_ENABLED && (
+              <div className="mt-7 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-black">
+                  {t("useDemoOfficerAccount") || "Use Demo Officer Account"}
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-black">
+                  {t("useDemoOfficerAccountNote") ||
+                    "Seeded accounts, one per demonstration centre. The OTP on the next screen is fixed for these."}
+                </p>
+
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {DEMO_OFFICERS.map((officer) => (
+                    <button
+                      key={officer.phone}
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => handleDemoLogin(officer.phone)}
+                      className="rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-bold text-black transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {officer.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="mt-7 border-t border-slate-100 pt-5 text-center">
               <p className="text-sm text-black">

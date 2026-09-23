@@ -7,6 +7,7 @@ import { translateError, translateFieldErrors, translateReason } from "../../lib
 import useApiResource from "../../hooks/useApiResource";
 import LanguageToggle from "../../components/LanguageToggle";
 import { ErrorState } from "../../components/StateViews";
+import DistrictSearchInput from "../../components/DistrictSearchInput";
 
 const CONSENT_POLICY_VERSION = "v1";
 
@@ -326,13 +327,25 @@ function Registration() {
                 </p>
 
                 <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                  <div>
+                  <div className="space-y-2">
                     <label
                       htmlFor="districtId"
-                      className="mb-2 block text-sm font-bold text-black"
+                      className="block text-sm font-bold text-black"
                     >
                       {t("district")}
                     </label>
+
+                    <DistrictSearchInput
+                      districts={districts.data ?? []}
+                      selectedDistrictId={districtId}
+                      onSelectDistrict={(id) => {
+                        setDistrictId(id);
+                        setVillageId("");
+                        clearFieldError("districtId");
+                        clearFieldError("villageId");
+                      }}
+                      disabled={districts.loading}
+                    />
 
                     <select
                       id="districtId"

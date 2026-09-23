@@ -945,7 +945,16 @@ export function buildAdminRouter(): Router {
 
         // Re-checked at approval, not just at submission: an identifier that
         // was free when the application was filed may have been taken since.
-        if (await repo.usernameTaken(client, request.username)) {
+        //
+        // The current registration form (auth.schemas.ts StaffRegisterSchema)
+        // collects no username, employee code or password — sign-in here is
+        // phone + OTP, same as a farmer's. So a request usually arrives with
+        // those three columns NULL, and an administrator assigns an employee
+        // code and a generated, unusable username at approval time instead of
+        // trusting one the applicant chose. A request that DOES carry them
+        // (an older application, or one entered by hand) is still honoured
+        // and still checked for a collision.
+        if (request.username && (await repo.usernameTaken(client, request.username))) {
           throw conflict(ErrorCodes.USERNAME_TAKEN, 'That username is already in use');
         }
         if (await repo.phoneTaken(client, request.phone_e164)) {
@@ -954,19 +963,27 @@ export function buildAdminRouter(): Router {
             'That phone number already belongs to an account',
           );
         }
-        if (await repo.employeeCodeTaken(client, request.employee_code)) {
+        if (request.employee_code && (await repo.employeeCodeTaken(client, request.employee_code))) {
           throw conflict(ErrorCodes.EMPLOYEE_CODE_TAKEN, 'That employee code is already in use');
         }
 
-        // The hash the applicant's own password produced at submission is
-        // carried across unchanged, so their chosen password keeps working and
-        // no plaintext was ever stored to get here.
+        // Generated deterministically from the request id, which is already
+        // unique, so no taken-check is needed for a value nothing else could
+        // produce.
+        const shortId = id.replace(/-/g, '').slice(0, 8);
+        const employeeCode = request.employee_code ?? `OFF-${shortId.toUpperCase()}`;
+        const username = request.username ?? `officer-${shortId}`;
+
+        // The hash the applicant's own password produced at submission (when
+        // one exists) is carried across unchanged, so it keeps working and no
+        // plaintext was ever stored to get here. Most requests carry none —
+        // this account signs in by phone + OTP, not a password.
         const ids = await repo.createOfficer(client, {
           fullName: request.full_name,
-          username: request.username,
+          username,
           passwordHash: request.password_hash,
           phoneE164: request.phone_e164,
-          employeeCode: request.employee_code,
+          employeeCode,
           designation: request.designation,
           createdByUserId: req.actor!.userId,
         });
@@ -977,6 +994,19 @@ export function buildAdminRouter(): Router {
           request.requested_centre_id,
           req.actor!.userId,
         );
+
+        // The crops and storage capacity the applicant declared are applied
+        // now, against a request an administrator has reviewed — never at
+        // submission, when nothing about the applicant was verified yet.
+        if (request.requested_crop_ids?.length) {
+          await repo.applyRequestedCropConfigurations(
+            client,
+            request.requested_centre_id,
+            request.requested_crop_ids,
+            request.crop_storage_quintals ?? {},
+            req.actor!.userId,
+          );
+        }
 
         await repo.settleRegistrationRequest(
           client,
@@ -989,13 +1019,13 @@ export function buildAdminRouter(): Router {
 
         await auditOfficer(client, req, AuditActions.OFFICER_REGISTRATION_APPROVED, ids.officerId, null, {
           requestId: id,
-          employeeCode: request.employee_code,
-          username: request.username,
+          employeeCode,
+          username,
           centreId: request.requested_centre_id,
           assigned,
         });
 
-        return { employeeCode: request.employee_code, username: request.username, assigned };
+        return { employeeCode, username, assigned };
       });
 
       sendData(res, 201, {

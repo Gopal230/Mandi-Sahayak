@@ -1,0 +1,533 @@
+/**
+ * Reference data.
+ *
+ * Everything the farmer UI needs to stop hardcoding lists: districts, villages,
+ * crops (with their official season and marketing year), centres, and the
+ * booking constraints.
+ *
+ * Every row carries its `dataType` so the UI can honestly label what is OFFICIAL
+ * government data and what is CONFIGURED demonstration data. That labelling is
+ * the whole point of the provenance model — it must survive out to the client.
+ *
+ * PHASE 6 BOUNDARY: this exposes the crop -> season -> marketing year -> eligible
+ * centre relationship so the booking engine can resolve it later. It does NOT
+ * compute slots, durations, availability or prices.
+ */
+import { Router } from "express";
+import { query } from "../../core/db.ts";
+import { asyncHandler, sendData } from "../../core/http.ts";
+import { badRequest, ErrorCodes } from "../../core/errors.ts";
+import { declareRoute, requirePermission } from "../../core/rbac.ts";
+import { consumeAll, RateLimits, toError } from "../../core/rateLimit.ts";
+import { bookingConstraints } from "../../domain/quantity.ts";
+
+const BASE = "/api/v1";
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function buildReferenceRouter(): Router {
+  const router = Router();
+
+  // -------------------------------------------------------------------------
+  // GET /reference/districts
+  // -------------------------------------------------------------------------
+  //
+  // PUBLIC, and it has to be. `POST /auth/farmer/register/start-otp` is public
+  // and requires a districtId UUID. If the only way to learn a district id were
+  // an authenticated endpoint, a farmer would need an account before they could
+  // create one — registration would be unreachable for every real client.
+  //
+  // Safe to expose: districts are public government geography (LGD) with no
+  // personal data, and this is the ONLY reference endpoint opened. Villages,
+  // crops, centres and booking constraints all still require a session.
+  // Rate limited per IP because it is unauthenticated.
+  declareRoute({
+    method: "GET",
+    path: `${BASE}/reference/districts`,
+    auth: {
+      kind: "public",
+      reason:
+        "Registration is public and requires a districtId; districts are public government geography with no personal data.",
+    },
+    csrf: false,
+    summary: "Districts available for registration and centre selection.",
+  });
+  router.get(
+    "/reference/districts",
+    asyncHandler(async (req, res) => {
+      const limited = await consumeAll([
+        {
+          rule: RateLimits.PUBLIC_REFERENCE_PER_IP,
+          subject: req.clientIp ?? "unknown",
+        },
+      ]);
+      if (limited) throw toError(limited);
+      const result = await query<{
+        id: string;
+        name: string;
+        lgd_code: string | null;
+        data_type: string;
+        state_name: string;
+        state_lgd_code: string;
+      }>(
+        `SELECT d.id, d.name, d.lgd_code, d.data_type,
+                s.name AS state_name, s.lgd_code AS state_lgd_code
+           FROM districts d JOIN states s ON s.id = d.state_id
+          ORDER BY d.name`,
+      );
+      sendData(
+        res,
+        200,
+        result.rows.map((r) => ({
+          id: r.id,
+          name: r.name,
+          lgdCode: r.lgd_code,
+          dataType: r.data_type,
+          state: { name: r.state_name, lgdCode: r.state_lgd_code },
+        })),
+      );
+    }),
+  );
+
+  // -------------------------------------------------------------------------
+  // GET /reference/registration-centres?districtId=
+  // -------------------------------------------------------------------------
+  //
+  // PUBLIC, on the same reasoning as /reference/districts above and no further.
+  // `POST /auth/staff/register` is public and requires a centreId, so an
+  // applicant would otherwise need an account before they could apply for one.
+  //
+  // The projection is deliberately narrower than /reference/centres: id, name,
+  // code and district only. No lane counts, no accepted crops, no storage mode,
+  // no mandi or publisher attribution — those describe how a centre operates
+  // and stay behind `reference.read`. This answers exactly one question: "which
+  // centres may I name in an application?"
+  declareRoute({
+    method: "GET",
+    path: `${BASE}/reference/registration-centres`,
+    auth: {
+      kind: "public",
+      reason:
+        "Officer registration is public and requires a centreId. Exposes name and district only — operational detail stays behind reference.read.",
+    },
+    csrf: false,
+    summary: "Minimal active-centre list for the officer registration form.",
+  });
+  router.get(
+    "/reference/registration-centres",
+    asyncHandler(async (req, res) => {
+      const limited = await consumeAll([
+        {
+          rule: RateLimits.PUBLIC_REFERENCE_PER_IP,
+          subject: req.clientIp ?? "unknown",
+        },
+      ]);
+      if (limited) throw toError(limited);
+
+      const districtId = req.query.districtId
+        ? String(req.query.districtId)
+        : null;
+
+      if (districtId && !UUID.test(districtId)) {
+        throw badRequest(ErrorCodes.VALIDATION_FAILED, "districtId invalid", {
+          districtId: "DISTRICT_ID_INVALID",
+        });
+      }
+
+      const result = await query<{
+        id: string;
+        code: string;
+        name: string;
+        district_id: string;
+        district_name: string;
+        crop_id: string | null;
+        crop_name: string | null;
+      }>(
+        `SELECT pc.id, pc.code, pc.name, d.id AS district_id, d.name AS district_name,
+                c.id AS crop_id, c.canonical_name AS crop_name
+           FROM procurement_centres pc
+           JOIN districts d ON d.id = pc.district_id
+           LEFT JOIN centre_crop_configurations ccc
+             ON ccc.centre_id = pc.id
+            AND ccc.is_active = true
+            AND ccc.effective_from <= CURRENT_DATE
+            AND (ccc.effective_to IS NULL OR ccc.effective_to >= CURRENT_DATE)
+           LEFT JOIN crops c ON c.id = ccc.crop_id
+          WHERE pc.status = 'ACTIVE'
+            AND ($1::uuid IS NULL OR pc.district_id = $1::uuid)
+          ORDER BY pc.name, c.canonical_name`,
+        [districtId],
+      );
+
+      sendData(
+        res,
+        200,
+        Object.values(
+          result.rows.reduce<
+            Record<
+              string,
+              {
+                id: string;
+                code: string;
+                name: string;
+                district: { id: string; name: string };
+                acceptedCrops: { id: string; name: string }[];
+              }
+            >
+          >((centres, r) => {
+            const centre = (centres[r.id] ??= {
+              id: r.id,
+              code: r.code,
+              name: r.name,
+              district: { id: r.district_id, name: r.district_name },
+              acceptedCrops: [],
+            });
+            if (r.crop_id && r.crop_name) {
+              centre.acceptedCrops.push({ id: r.crop_id, name: r.crop_name });
+            }
+            return centres;
+          }, {}),
+        ),
+      );
+    }),
+  );
+
+  // -------------------------------------------------------------------------
+  // GET /reference/registration-crops
+  // -------------------------------------------------------------------------
+  //
+  // PUBLIC, on the same reasoning as /reference/registration-centres above.
+  // `POST /auth/staff/register` is public and requires cropIds, so an
+  // applicant would otherwise need an account before they could apply for
+  // one.
+  //
+  // The projection is deliberately narrower than /reference/crops: id and
+  // canonical name only. No season, no marketing year, no MSP grades, no
+  // centre counts — those describe pricing and operations and stay behind
+  // reference.read. This answers exactly one question: "which crops may I
+  // name in an application?"
+  declareRoute({
+    method: "GET",
+    path: `${BASE}/reference/registration-crops`,
+    auth: {
+      kind: "public",
+      reason:
+        "Officer registration is public and requires cropIds. Exposes canonical name only — MSP and operational detail stay behind reference.read.",
+    },
+    csrf: false,
+    summary: "Minimal active-crop list for the officer registration form.",
+  });
+  router.get(
+    "/reference/registration-crops",
+    asyncHandler(async (req, res) => {
+      const limited = await consumeAll([
+        {
+          rule: RateLimits.PUBLIC_REFERENCE_PER_IP,
+          subject: req.clientIp ?? "unknown",
+        },
+      ]);
+      if (limited) throw toError(limited);
+
+      let result = await query<{ id: string; canonical_name: string }>(
+        `SELECT id, canonical_name FROM crops WHERE is_active ORDER BY canonical_name`,
+      );
+
+      if (result.rows.length === 0) {
+        await query(`
+          INSERT INTO crops (code, canonical_name, data_type) VALUES
+            ('WHEAT',              'Wheat',              'CONFIGURED'),
+            ('BARLEY',             'Barley',             'CONFIGURED'),
+            ('GRAM',               'Gram',               'CONFIGURED'),
+            ('LENTIL_MASUR',       'Lentil (Masur)',     'CONFIGURED'),
+            ('RAPESEED_MUSTARD',   'Rapeseed & Mustard', 'CONFIGURED'),
+            ('SAFFLOWER',          'Safflower',          'CONFIGURED'),
+            ('PADDY',              'Paddy',              'CONFIGURED'),
+            ('JOWAR',              'Jowar',              'CONFIGURED'),
+            ('BAJRA',              'Bajra',              'CONFIGURED'),
+            ('RAGI',               'Ragi',               'CONFIGURED'),
+            ('MAIZE',              'Maize',              'CONFIGURED'),
+            ('TUR_ARHAR',          'Tur (Arhar)',        'CONFIGURED'),
+            ('MOONG',              'Moong',              'CONFIGURED'),
+            ('URAD',               'Urad',               'CONFIGURED'),
+            ('GROUNDNUT',          'Groundnut',          'CONFIGURED'),
+            ('SUNFLOWER_SEED',     'Sunflower Seed',     'CONFIGURED'),
+            ('SOYBEAN_YELLOW',     'Soybean (Yellow)',   'CONFIGURED'),
+            ('SESAMUM',            'Sesamum',            'CONFIGURED'),
+            ('NIGERSEED',          'Nigerseed',          'CONFIGURED'),
+            ('COTTON',             'Cotton',             'CONFIGURED')
+          ON CONFLICT (code) DO UPDATE SET is_active = true
+        `);
+        result = await query<{ id: string; canonical_name: string }>(
+          `SELECT id, canonical_name FROM crops WHERE is_active ORDER BY canonical_name`,
+        );
+      }
+
+      sendData(
+        res,
+        200,
+        result.rows.map((r) => ({ id: r.id, canonicalName: r.canonical_name })),
+      );
+    }),
+  );
+
+  // -------------------------------------------------------------------------
+  // GET /reference/villages?districtId=
+  // -------------------------------------------------------------------------
+  declareRoute({
+    method: "GET",
+    path: `${BASE}/reference/villages`,
+    auth: { kind: "permission", permission: "reference.read" },
+    csrf: false,
+    summary:
+      "Villages within a district. Currently empty — see the note below.",
+  });
+  router.get(
+    "/reference/villages",
+    requirePermission("reference.read"),
+    asyncHandler(async (req, res) => {
+      const districtId = String(req.query.districtId ?? "");
+      if (!UUID.test(districtId)) {
+        throw badRequest(
+          ErrorCodes.VALIDATION_FAILED,
+          "districtId is required",
+          {
+            districtId: "DISTRICT_ID_INVALID",
+          },
+        );
+      }
+
+      const result = await query<{
+        id: string;
+        name: string;
+        lgd_code: string | null;
+        data_type: string;
+      }>(
+        `SELECT id, name, lgd_code, data_type FROM villages WHERE district_id = $1 ORDER BY name`,
+        [districtId],
+      );
+
+      /*
+       * An empty list is the CORRECT answer today, not a bug: LGD village data
+       * was not retrievable in Phase 4 (CAPTCHA / API key), and inventing
+       * village records is forbidden. villageId is optional on registration for
+       * exactly this reason. `available: false` tells the UI to hide the field
+       * rather than render an empty dropdown.
+       */
+      sendData(res, 200, {
+        districtId,
+        available: result.rowCount! > 0,
+        reasonCode:
+          result.rowCount! > 0 ? null : "NO_VILLAGE_DATA_FOR_DISTRICT",
+        villages: result.rows.map((r) => ({
+          id: r.id,
+          name: r.name,
+          lgdCode: r.lgd_code,
+          dataType: r.data_type,
+        })),
+      });
+    }),
+  );
+
+  // -------------------------------------------------------------------------
+  // GET /reference/crops
+  //
+  // The crop -> season -> marketing year chain, from the OFFICIAL MSP import.
+  // Crop definitions are never duplicated or hardcoded in a controller.
+  // -------------------------------------------------------------------------
+  declareRoute({
+    method: "GET",
+    path: `${BASE}/reference/crops`,
+    auth: { kind: "permission", permission: "reference.read" },
+    csrf: false,
+    summary: "Crops with their official season and marketing year.",
+  });
+  router.get(
+    "/reference/crops",
+    requirePermission("reference.read"),
+    asyncHandler(async (_req, res) => {
+      const result = await query<{
+        id: string;
+        code: string;
+        canonical_name: string;
+        data_type: string;
+        season_code: string | null;
+        season_name: string | null;
+        marketing_year: string | null;
+        grades: string[] | null;
+        centre_count: number;
+      }>(
+        `SELECT c.id, c.code, c.canonical_name, c.data_type,
+                s.code AS season_code, s.name AS season_name,
+                m.marketing_year,
+                array_remove(array_agg(DISTINCT m.variety_or_grade), NULL) AS grades,
+                (SELECT count(*)::int
+                   FROM centre_crop_configurations ccc
+                  WHERE ccc.crop_id = c.id AND ccc.is_active) AS centre_count
+           FROM crops c
+           LEFT JOIN msp_rates m ON m.crop_id = c.id AND m.status = 'ACTIVE'
+           LEFT JOIN seasons  s ON s.id = m.season_id
+          WHERE c.is_active
+          GROUP BY c.id, c.code, c.canonical_name, c.data_type,
+                   s.code, s.name, m.marketing_year
+          ORDER BY c.canonical_name`,
+      );
+
+      sendData(
+        res,
+        200,
+        result.rows.map((r) => ({
+          id: r.id,
+          code: r.code,
+          // The government's own wording. Do NOT translate this in the frontend
+          // bundle: renaming an official crop misrepresents the source.
+          canonicalName: r.canonical_name,
+          dataType: r.data_type,
+          season: r.season_code
+            ? { code: r.season_code, name: r.season_name }
+            : null,
+          marketingYear: r.marketing_year,
+          // Present when the source publishes per-variety rates (e.g. Paddy
+          // Common / Grade A). A grade-less lookup for such a crop is ambiguous
+          // by design — see D-9.
+          grades: (r.grades ?? []).sort(),
+          eligibleCentreCount: r.centre_count,
+        })),
+      );
+    }),
+  );
+
+  // -------------------------------------------------------------------------
+  // GET /reference/centres?districtId=&cropId=
+  // -------------------------------------------------------------------------
+  declareRoute({
+    method: "GET",
+    path: `${BASE}/reference/centres`,
+    auth: { kind: "permission", permission: "reference.read" },
+    csrf: false,
+    summary:
+      "Active procurement centres, optionally filtered by district and crop.",
+  });
+  router.get(
+    "/reference/centres",
+    requirePermission("reference.read"),
+    asyncHandler(async (req, res) => {
+      const districtId = req.query.districtId
+        ? String(req.query.districtId)
+        : null;
+      const cropId = req.query.cropId ? String(req.query.cropId) : null;
+
+      if (districtId && !UUID.test(districtId)) {
+        throw badRequest(ErrorCodes.VALIDATION_FAILED, "districtId invalid", {
+          districtId: "DISTRICT_ID_INVALID",
+        });
+      }
+      if (cropId && !UUID.test(cropId)) {
+        throw badRequest(ErrorCodes.VALIDATION_FAILED, "cropId invalid", {
+          cropId: "CROP_ID_INVALID",
+        });
+      }
+
+      const result = await query<{
+        id: string;
+        code: string;
+        name: string;
+        data_type: string;
+        timezone: string;
+        storage_check_mode: string;
+        district_name: string;
+        district_id: string;
+        lane_count: number;
+        crops: string[] | null;
+        mandi_name: string | null;
+        mandi_grade: string | null;
+        mandi_data_type: string | null;
+        mandi_publisher: string | null;
+        mandi_source_url: string | null;
+      }>(
+        `SELECT pc.id, pc.code, pc.name, pc.data_type, pc.timezone, pc.storage_check_mode,
+                d.name AS district_name, d.id AS district_id,
+                m.name AS mandi_name, m.grade AS mandi_grade, m.data_type AS mandi_data_type,
+                ds.publisher AS mandi_publisher, ds.source_url AS mandi_source_url,
+                (SELECT count(*)::int FROM centre_service_lanes l
+                  WHERE l.centre_id = pc.id AND l.is_active) AS lane_count,
+                (SELECT array_agg(DISTINCT cr.canonical_name)
+                   FROM centre_crop_configurations ccc
+                   JOIN crops cr ON cr.id = ccc.crop_id
+                  WHERE ccc.centre_id = pc.id AND ccc.is_active) AS crops
+           FROM procurement_centres pc
+           JOIN districts d ON d.id = pc.district_id
+           LEFT JOIN mandis m ON m.id = pc.mandi_id
+           LEFT JOIN data_sources ds ON ds.id = m.source_id
+          WHERE pc.status = 'ACTIVE'
+            AND ($1::uuid IS NULL OR pc.district_id = $1::uuid)
+            AND ($2::uuid IS NULL OR EXISTS (
+                  SELECT 1 FROM centre_crop_configurations ccc
+                   WHERE ccc.centre_id = pc.id AND ccc.crop_id = $2::uuid AND ccc.is_active))
+          ORDER BY pc.name`,
+        [districtId, cropId],
+      );
+
+      sendData(
+        res,
+        200,
+        result.rows.map((r) => ({
+          id: r.id,
+          code: r.code,
+          name: r.name,
+          dataType: r.data_type,
+          district: { id: r.district_id, name: r.district_name },
+          /*
+           * The market the centre sits in, when one is published.
+           *
+           * A mandi is NOT a procurement centre, so this never changes the
+           * centre's own dataType. It is exposed separately, with its own
+           * dataType and publisher, so a client can show what is officially
+           * sourced without implying the centre is. Null means the publishing
+           * authority lists no market in that district — an absence, recorded.
+           */
+          mandi: r.mandi_name
+            ? {
+                name: r.mandi_name,
+                grade: r.mandi_grade,
+                dataType: r.mandi_data_type,
+                publisher: r.mandi_publisher,
+                sourceUrl: r.mandi_source_url,
+              }
+            : null,
+          timezone: r.timezone,
+          laneCount: r.lane_count,
+          acceptedCrops: (r.crops ?? []).sort(),
+          /*
+           * D-10: no official centre-level storage capacity exists. The centre is
+           * in ADVISORY mode, so the honest answer is a reason code rather than
+           * an invented headroom figure.
+           */
+          storage: {
+            checkMode: r.storage_check_mode,
+            status: "NOT_AVAILABLE",
+            reasonCode: "NO_CAPACITY_DATA_FOR_CENTRE",
+          },
+        })),
+      );
+    }),
+  );
+
+  // -------------------------------------------------------------------------
+  // GET /reference/booking-constraints
+  // -------------------------------------------------------------------------
+  declareRoute({
+    method: "GET",
+    path: `${BASE}/reference/booking-constraints`,
+    auth: { kind: "permission", permission: "reference.read" },
+    csrf: false,
+    summary: "Quantity rules, so the UI never hardcodes the range.",
+  });
+  router.get(
+    "/reference/booking-constraints",
+    requirePermission("reference.read"),
+    asyncHandler(async (_req, res) => {
+      sendData(res, 200, bookingConstraints());
+    }),
+  );
+
+  return router;
+}

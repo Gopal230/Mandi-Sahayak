@@ -887,14 +887,25 @@ var OtpResendSchema = z2.object({
 var StaffLoginSchema = z2.object({
   phone: PhoneSchema
 });
+var CropStorageQuintalsSchema = z2.record(
+  z2.string().uuid(),
+  z2.number().positive().max(1e5, "CROP_STORAGE_CAPACITY_TOO_LARGE")
+);
 var StaffRegisterSchema = z2.object({
   fullName: FullNameSchema,
   phone: PhoneSchema,
   districtId: z2.string().uuid("DISTRICT_ID_INVALID"),
   centreId: z2.string().uuid("CENTRE_ID_INVALID"),
   cropIds: z2.array(z2.string().uuid("CROP_ID_INVALID")).min(1, "CROP_ID_INVALID"),
+  cropStorageQuintals: CropStorageQuintalsSchema,
   consent: ConsentSchema
-});
+}).refine(
+  (v) => v.cropIds.every((id) => typeof v.cropStorageQuintals[id] === "number"),
+  {
+    message: "CROP_STORAGE_REQUIRED",
+    path: ["cropStorageQuintals"]
+  }
+);
 var UpdateMeSchema = z2.object({
   fullName: FullNameSchema.optional(),
   locale: LocaleSchema.optional(),
@@ -932,7 +943,42 @@ function readDemoOtp(phone) {
   return entry.otp;
 }
 
+// server/src/modules/auth/demoOfficers.ts
+var DEMO_OFFICERS = [
+  {
+    phone: "+919999900001",
+    employeeCode: "OFF-ALI-001",
+    centreName: "Aligarh Demonstration Procurement Centre",
+    fullName: "Aligarh Demonstration Officer"
+  },
+  {
+    phone: "+919999900002",
+    employeeCode: "OFF-MAT-001",
+    centreName: "Mathura Demonstration Procurement Centre",
+    fullName: "Mathura Demonstration Officer"
+  },
+  {
+    phone: "+919999900003",
+    employeeCode: "OFF-HAT-001",
+    centreName: "Hathras Demonstration Procurement Centre",
+    fullName: "Hathras Demonstration Officer"
+  },
+  {
+    phone: "+919999900004",
+    employeeCode: "OFF-BUL-001",
+    centreName: "Bulandshahr Demonstration Procurement Centre",
+    fullName: "Bulandshahr Demonstration Officer"
+  }
+];
+var DEMO_PHONES = new Set(DEMO_OFFICERS.map((o) => o.phone));
+function isDemoOfficerPhone(phone) {
+  return DEMO_PHONES.has(phone);
+}
+
 // server/src/modules/auth/otp.service.ts
+function fixedDemoOtp(length) {
+  return "1".repeat(length);
+}
 function attachDemoOtp(view, deliveredOtp, demoMode) {
   if (!demoMode) return view;
   return { ...view, devOtp: deliveredOtp };
@@ -963,7 +1009,8 @@ function toView(row) {
 }
 async function issueChallenge(client, opts) {
   const cfg = getConfig();
-  const otp = generateOtp(cfg.OTP_LENGTH);
+  const useFixedOtp = cfg.DEMO_MODE && !opts.decoy && opts.purpose === "STAFF_2FA" && isDemoOfficerPhone(opts.phone);
+  const otp = useFixedOtp ? fixedDemoOtp(cfg.OTP_LENGTH) : generateOtp(cfg.OTP_LENGTH);
   const expiresAt = new Date(Date.now() + cfg.OTP_TTL_SECONDS * 1e3);
   const res = await client.query(
     `INSERT INTO otp_challenges
@@ -1040,7 +1087,9 @@ async function resendChallenge(client, challengeId) {
   if (row.resend_count >= row.max_resends) {
     throw unprocessable(ErrorCodes.OTP_RESEND_LIMIT_REACHED, "Resend limit reached");
   }
-  const otp = generateOtp(cfg.OTP_LENGTH);
+  const decoyForFixedCheck = isDecoyChallenge(row);
+  const useFixedOtp = cfg.DEMO_MODE && !decoyForFixedCheck && row.purpose === "STAFF_2FA" && isDemoOfficerPhone(row.phone_e164);
+  const otp = useFixedOtp ? fixedDemoOtp(cfg.OTP_LENGTH) : generateOtp(cfg.OTP_LENGTH);
   const res = await client.query(
     `UPDATE otp_challenges
         SET otp_hash = $2,
@@ -1198,86 +1247,49 @@ async function submitOfficerRegistration(client, input, ctx2) {
       "Phone already registered."
     );
   }
-  const user = await client.query(
-    `INSERT INTO users (full_name, phone_e164, locale)
-     VALUES ($1, $2, 'en') RETURNING id`,
-    [input.fullName, input.phone]
-  );
-  const userId = user.rows[0].id;
-  const officer = await client.query(
-    `INSERT INTO officers (user_id, created_by_user_id)
-     VALUES ($1, NULL) RETURNING id`,
-    [userId]
-  );
-  await client.query(
-    `INSERT INTO user_roles (user_id, role_id)
-     SELECT $1, id FROM roles WHERE code = 'OFFICER'`,
-    [userId]
-  );
-  await client.query(
-    `INSERT INTO officer_centre_assignments (officer_id, centre_id)
-     VALUES ($1, $2)`,
-    [officer.rows[0].id, input.centreId]
-  );
-  for (const cropId of input.cropIds) {
-    const existingConfig = await client.query(
-      `SELECT id FROM centre_crop_configurations
-        WHERE centre_id = $1 AND crop_id = $2 AND is_active = true
-          AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)`,
-      [input.centreId, cropId]
+  let requestId;
+  await client.query("SAVEPOINT staff_register_insert");
+  try {
+    const request = await client.query(
+      `INSERT INTO officer_registration_requests
+         (full_name, phone_e164, requested_centre_id, requested_district_id,
+          requested_crop_ids, crop_storage_quintals)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id`,
+      [
+        input.fullName,
+        input.phone,
+        input.centreId,
+        input.districtId,
+        input.cropIds,
+        JSON.stringify(input.cropStorageQuintals)
+      ]
     );
-    if ((existingConfig.rowCount ?? 0) === 0) {
-      const rateInfo = await client.query(
-        `SELECT season_id, marketing_year FROM msp_rates
-         WHERE crop_id = $1
-         ORDER BY (status = 'ACTIVATED') DESC, effective_from DESC NULLS LAST
-         LIMIT 1`,
-        [cropId]
+    requestId = request.rows[0].id;
+  } catch (error) {
+    await client.query("ROLLBACK TO SAVEPOINT staff_register_insert");
+    if (error.code === "23505") {
+      throw conflict(
+        ErrorCodes.PHONE_ALREADY_REGISTERED,
+        "An application for this phone number is already pending review."
       );
-      let seasonId = rateInfo.rows[0]?.season_id;
-      const marketingYear = rateInfo.rows[0]?.marketing_year ?? "2026-27";
-      if (!seasonId) {
-        const defaultSeason = await client.query(
-          `SELECT id FROM seasons ORDER BY code ASC LIMIT 1`
-        );
-        seasonId = defaultSeason.rows[0]?.id;
-      }
-      if (seasonId) {
-        await client.query(
-          `INSERT INTO centre_crop_configurations (
-             centre_id, crop_id, season_id, marketing_year, is_active,
-             effective_from, effective_to, data_type, configured_by_user_id, configuration_note
-           ) VALUES ($1, $2, $3, $4, true, CURRENT_DATE, NULL, 'CONFIGURED', $5, 'Configured during officer registration')`,
-          [input.centreId, cropId, seasonId, marketingYear, userId]
-        );
-      }
     }
+    throw error;
   }
-  await client.query(
-    `UPDATE reference_versions SET version = version + 1, updated_at = now()
-     WHERE resource = 'procurement_centres'`
-  );
-  const { view } = await issueChallenge(client, {
-    purpose: "STAFF_2FA",
-    phone: input.phone,
-    userId,
-    ip: ctx2.ip
-  });
   await writeAudit(client, {
     action: AuditActions.OFFICER_REGISTRATION_REQUESTED,
-    entityType: "officer",
-    entityId: officer.rows[0].id,
-    actorUserId: userId,
+    entityType: "officer_registration_request",
+    entityId: requestId,
     actorRole: "SYSTEM",
     actorIp: ctx2.ip,
     requestId: ctx2.requestId,
     metadata: {
       requestedCentreId: input.centreId,
       cropIds: input.cropIds,
-      approvalRequired: false
+      approvalRequired: true
     }
   });
-  return view;
+  return { requestId, status: "PENDING" };
 }
 async function startStaffLogin(client, phone, ctx2) {
   const res = await client.query(
@@ -3906,6 +3918,25 @@ async function centreCropRates(centreId) {
   );
   return res.rows;
 }
+async function centreCropStorage(centreId) {
+  const res = await query(
+    `SELECT c.id AS crop_id, c.canonical_name,
+            ccc.storage_capacity_kg::text AS storage_capacity_kg,
+            COALESCE(SUM(pr.accepted_quantity_kg), 0)::text AS occupied_kg
+       FROM centre_crop_configurations ccc
+       JOIN crops c ON c.id = ccc.crop_id
+       LEFT JOIN bookings b
+              ON b.centre_id = ccc.centre_id
+             AND b.crop_id = ccc.crop_id
+             AND b.status = 'COMPLETED'
+       LEFT JOIN procurements pr ON pr.booking_id = b.id
+      WHERE ccc.centre_id = $1 AND ccc.is_active
+      GROUP BY c.id, c.canonical_name, ccc.storage_capacity_kg
+      ORDER BY c.canonical_name`,
+    [centreId]
+  );
+  return res.rows;
+}
 async function createProcurement(client, bookingId, centreId, officerUserId) {
   const res = await client.query(
     `INSERT INTO procurements (booking_id, centre_id, officer_user_id, arrived_at)
@@ -4584,6 +4615,24 @@ async function centreOverview(centreId, serviceDate, timezone) {
     }
   };
 }
+async function centreStorageSummary(centreId) {
+  const rows = await centreCropStorage(centreId);
+  return rows.map((row) => {
+    const capacityKg = num(row.storage_capacity_kg);
+    const occupiedKg = num(row.occupied_kg) ?? 0;
+    const availableKg = capacityKg === null ? null : Math.max(capacityKg - occupiedKg, 0);
+    const filledPercent = capacityKg && capacityKg > 0 ? Math.min(100, Math.round((capacityKg - (availableKg ?? 0)) / capacityKg * 100)) : null;
+    return {
+      cropId: row.crop_id,
+      canonicalName: row.canonical_name,
+      capacityKg,
+      occupiedKg,
+      availableKg,
+      filledPercent,
+      reasonCode: capacityKg === null ? "NO_STORAGE_CAPACITY_CONFIGURED" : null
+    };
+  });
+}
 async function getOwnProcurement(farmerUserId, bookingCode) {
   const row = await findOwnProcurement(farmerUserId, bookingCode);
   if (!row) throw notFound("No procurement record for this booking");
@@ -4676,6 +4725,22 @@ function buildOfficerRouter() {
       if (!timezone) throw notFound("Centre not found");
       const date = req.query.date ? parse3(z6.string().regex(/^\d{4}-\d{2}-\d{2}$/, "DATE_INVALID"), req.query.date) : localDateOf(/* @__PURE__ */ new Date(), timezone);
       sendData(res, 200, await centreOverview(centreId, date, timezone));
+    })
+  );
+  declareRoute({
+    method: "GET",
+    path: `${BASE5}/officer/centres/:centreId/storage`,
+    auth: { kind: "permission", permission: "booking.read.centre" },
+    csrf: false,
+    summary: "Crop-wise storage capacity and current occupancy for a centre."
+  });
+  router.get(
+    "/officer/centres/:centreId/storage",
+    requirePermission("booking.read.centre"),
+    asyncHandler(async (req, res) => {
+      const centreId = parse3(z6.string().uuid("CENTRE_ID_INVALID"), req.params.centreId);
+      if (!actorMayActOnCentre(req.actor, centreId)) throw notFound("Centre not found");
+      sendData(res, 200, { centreId, crops: await centreStorageSummary(centreId) });
     })
   );
   declareRoute({
@@ -5723,7 +5788,8 @@ async function assignmentsForOfficer(employeeCode) {
 async function listRegistrationRequests(client, status) {
   const res = await client.query(
     `SELECT r.id, r.full_name, r.phone_e164, r.username, r.employee_code, r.designation,
-            r.requested_centre_id, pc.name AS centre_name, d.name AS district_name,
+            r.requested_centre_id, r.requested_district_id, r.requested_crop_ids,
+            r.crop_storage_quintals, pc.name AS centre_name, d.name AS district_name,
             r.status, r.created_at, r.decided_at, r.decision_note
        FROM officer_registration_requests r
        JOIN procurement_centres pc ON pc.id = r.requested_centre_id
@@ -5738,7 +5804,8 @@ async function listRegistrationRequests(client, status) {
 async function registrationRequestById(client, id) {
   const res = await client.query(
     `SELECT r.id, r.full_name, r.phone_e164, r.username, r.employee_code, r.designation,
-            r.requested_centre_id, pc.name AS centre_name, d.name AS district_name,
+            r.requested_centre_id, r.requested_district_id, r.requested_crop_ids,
+            r.crop_storage_quintals, pc.name AS centre_name, d.name AS district_name,
             r.status, r.created_at, r.decided_at, r.decision_note, r.password_hash
        FROM officer_registration_requests r
        JOIN procurement_centres pc ON pc.id = r.requested_centre_id
@@ -5747,6 +5814,55 @@ async function registrationRequestById(client, id) {
     [id]
   );
   return res.rows[0] ?? null;
+}
+async function applyRequestedCropConfigurations(client, centreId, cropIds, cropStorageQuintals, configuredByUserId) {
+  for (const cropId of cropIds) {
+    const quintals = Number(cropStorageQuintals[cropId]);
+    if (!(quintals > 0)) continue;
+    const storageCapacityKg = quintals * 100;
+    const existingConfig = await client.query(
+      `SELECT id, storage_capacity_kg FROM centre_crop_configurations
+        WHERE centre_id = $1 AND crop_id = $2 AND is_active = true
+          AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)`,
+      [centreId, cropId]
+    );
+    if ((existingConfig.rowCount ?? 0) === 0) {
+      const rateInfo = await client.query(
+        `SELECT season_id, marketing_year FROM msp_rates
+         WHERE crop_id = $1
+         ORDER BY (status = 'ACTIVATED') DESC, effective_from DESC NULLS LAST
+         LIMIT 1`,
+        [cropId]
+      );
+      let seasonId = rateInfo.rows[0]?.season_id;
+      const marketingYear = rateInfo.rows[0]?.marketing_year ?? "2026-27";
+      if (!seasonId) {
+        const defaultSeason = await client.query(
+          `SELECT id FROM seasons ORDER BY code ASC LIMIT 1`
+        );
+        seasonId = defaultSeason.rows[0]?.id;
+      }
+      if (seasonId) {
+        await client.query(
+          `INSERT INTO centre_crop_configurations (
+             centre_id, crop_id, season_id, marketing_year, is_active,
+             effective_from, effective_to, data_type, configured_by_user_id, configuration_note,
+             storage_capacity_kg
+           ) VALUES ($1, $2, $3, $4, true, CURRENT_DATE, NULL, 'CONFIGURED', $5, 'Configured on approval of an officer registration request', $6)`,
+          [centreId, cropId, seasonId, marketingYear, configuredByUserId, storageCapacityKg]
+        );
+      }
+    } else if (existingConfig.rows[0].storage_capacity_kg === null) {
+      await client.query(
+        `UPDATE centre_crop_configurations SET storage_capacity_kg = $1 WHERE id = $2`,
+        [storageCapacityKg, existingConfig.rows[0].id]
+      );
+    }
+  }
+  await client.query(
+    `UPDATE reference_versions SET version = version + 1, updated_at = now()
+     WHERE resource = 'procurement_centres'`
+  );
 }
 async function settleRegistrationRequest(client, id, status, byUserId, note, createdOfficerId) {
   await client.query(
@@ -6512,7 +6628,7 @@ function buildAdminRouter() {
             "That application has already been decided"
           );
         }
-        if (await usernameTaken(client, request.username)) {
+        if (request.username && await usernameTaken(client, request.username)) {
           throw conflict(ErrorCodes.USERNAME_TAKEN, "That username is already in use");
         }
         if (await phoneTaken(client, request.phone_e164)) {
@@ -6521,15 +6637,18 @@ function buildAdminRouter() {
             "That phone number already belongs to an account"
           );
         }
-        if (await employeeCodeTaken(client, request.employee_code)) {
+        if (request.employee_code && await employeeCodeTaken(client, request.employee_code)) {
           throw conflict(ErrorCodes.EMPLOYEE_CODE_TAKEN, "That employee code is already in use");
         }
+        const shortId = id.replace(/-/g, "").slice(0, 8);
+        const employeeCode = request.employee_code ?? `OFF-${shortId.toUpperCase()}`;
+        const username = request.username ?? `officer-${shortId}`;
         const ids = await createOfficer(client, {
           fullName: request.full_name,
-          username: request.username,
+          username,
           passwordHash: request.password_hash,
           phoneE164: request.phone_e164,
-          employeeCode: request.employee_code,
+          employeeCode,
           designation: request.designation,
           createdByUserId: req.actor.userId
         });
@@ -6539,6 +6658,15 @@ function buildAdminRouter() {
           request.requested_centre_id,
           req.actor.userId
         );
+        if (request.requested_crop_ids?.length) {
+          await applyRequestedCropConfigurations(
+            client,
+            request.requested_centre_id,
+            request.requested_crop_ids,
+            request.crop_storage_quintals ?? {},
+            req.actor.userId
+          );
+        }
         await settleRegistrationRequest(
           client,
           id,
@@ -6549,12 +6677,12 @@ function buildAdminRouter() {
         );
         await auditOfficer(client, req, AuditActions.OFFICER_REGISTRATION_APPROVED, ids.officerId, null, {
           requestId: id,
-          employeeCode: request.employee_code,
-          username: request.username,
+          employeeCode,
+          username,
           centreId: request.requested_centre_id,
           assigned
         });
-        return { employeeCode: request.employee_code, username: request.username, assigned };
+        return { employeeCode, username, assigned };
       });
       sendData(res, 201, {
         ...result,

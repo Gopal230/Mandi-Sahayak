@@ -491,7 +491,7 @@ export async function createOfficer(
   input: {
     fullName: string;
     username: string;
-    passwordHash: string;
+    passwordHash: string | null;
     phoneE164: string;
     employeeCode: string;
     designation: string | null;
@@ -663,10 +663,13 @@ export type RegistrationRequestRow = {
   id: string;
   full_name: string;
   phone_e164: string;
-  username: string;
-  employee_code: string;
+  username: string | null;
+  employee_code: string | null;
   designation: string | null;
   requested_centre_id: string;
+  requested_district_id: string | null;
+  requested_crop_ids: string[] | null;
+  crop_storage_quintals: Record<string, number> | null;
   centre_name: string;
   district_name: string;
   status: string;
@@ -681,7 +684,8 @@ export async function listRegistrationRequests(
 ): Promise<RegistrationRequestRow[]> {
   const res = await client.query<RegistrationRequestRow>(
     `SELECT r.id, r.full_name, r.phone_e164, r.username, r.employee_code, r.designation,
-            r.requested_centre_id, pc.name AS centre_name, d.name AS district_name,
+            r.requested_centre_id, r.requested_district_id, r.requested_crop_ids,
+            r.crop_storage_quintals, pc.name AS centre_name, d.name AS district_name,
             r.status, r.created_at, r.decided_at, r.decision_note
        FROM officer_registration_requests r
        JOIN procurement_centres pc ON pc.id = r.requested_centre_id
@@ -698,10 +702,11 @@ export async function listRegistrationRequests(
 export async function registrationRequestById(
   client: PoolClient,
   id: string,
-): Promise<(RegistrationRequestRow & { password_hash: string }) | null> {
-  const res = await client.query<RegistrationRequestRow & { password_hash: string }>(
+): Promise<(RegistrationRequestRow & { password_hash: string | null }) | null> {
+  const res = await client.query<RegistrationRequestRow & { password_hash: string | null }>(
     `SELECT r.id, r.full_name, r.phone_e164, r.username, r.employee_code, r.designation,
-            r.requested_centre_id, pc.name AS centre_name, d.name AS district_name,
+            r.requested_centre_id, r.requested_district_id, r.requested_crop_ids,
+            r.crop_storage_quintals, pc.name AS centre_name, d.name AS district_name,
             r.status, r.created_at, r.decided_at, r.decision_note, r.password_hash
        FROM officer_registration_requests r
        JOIN procurement_centres pc ON pc.id = r.requested_centre_id
@@ -710,6 +715,75 @@ export async function registrationRequestById(
     [id],
   );
   return res.rows[0] ?? null;
+}
+
+/**
+ * Applies the crop capacity an approved applicant declared to the centre they
+ * were assigned to — the write `submitOfficerRegistration` no longer performs
+ * at request time, because a PENDING request must configure nothing. This is
+ * the same logic, moved here so it runs once, at approval, against a request
+ * an administrator has actually reviewed.
+ */
+export async function applyRequestedCropConfigurations(
+  client: PoolClient,
+  centreId: string,
+  cropIds: string[],
+  cropStorageQuintals: Record<string, number>,
+  configuredByUserId: string,
+): Promise<void> {
+  for (const cropId of cropIds) {
+    const quintals = Number(cropStorageQuintals[cropId]);
+    if (!(quintals > 0)) continue;
+    const storageCapacityKg = quintals * 100;
+
+    const existingConfig = await client.query<{ id: string; storage_capacity_kg: string | null }>(
+      `SELECT id, storage_capacity_kg FROM centre_crop_configurations
+        WHERE centre_id = $1 AND crop_id = $2 AND is_active = true
+          AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)`,
+      [centreId, cropId],
+    );
+
+    if ((existingConfig.rowCount ?? 0) === 0) {
+      const rateInfo = await client.query<{ season_id: string; marketing_year: string }>(
+        `SELECT season_id, marketing_year FROM msp_rates
+         WHERE crop_id = $1
+         ORDER BY (status = 'ACTIVATED') DESC, effective_from DESC NULLS LAST
+         LIMIT 1`,
+        [cropId],
+      );
+
+      let seasonId = rateInfo.rows[0]?.season_id;
+      const marketingYear = rateInfo.rows[0]?.marketing_year ?? '2026-27';
+
+      if (!seasonId) {
+        const defaultSeason = await client.query<{ id: string }>(
+          `SELECT id FROM seasons ORDER BY code ASC LIMIT 1`,
+        );
+        seasonId = defaultSeason.rows[0]?.id;
+      }
+
+      if (seasonId) {
+        await client.query(
+          `INSERT INTO centre_crop_configurations (
+             centre_id, crop_id, season_id, marketing_year, is_active,
+             effective_from, effective_to, data_type, configured_by_user_id, configuration_note,
+             storage_capacity_kg
+           ) VALUES ($1, $2, $3, $4, true, CURRENT_DATE, NULL, 'CONFIGURED', $5, 'Configured on approval of an officer registration request', $6)`,
+          [centreId, cropId, seasonId, marketingYear, configuredByUserId, storageCapacityKg],
+        );
+      }
+    } else if (existingConfig.rows[0].storage_capacity_kg === null) {
+      await client.query(
+        `UPDATE centre_crop_configurations SET storage_capacity_kg = $1 WHERE id = $2`,
+        [storageCapacityKg, existingConfig.rows[0].id],
+      );
+    }
+  }
+
+  await client.query(
+    `UPDATE reference_versions SET version = version + 1, updated_at = now()
+     WHERE resource = 'procurement_centres'`,
+  );
 }
 
 export async function settleRegistrationRequest(

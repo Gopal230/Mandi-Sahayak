@@ -8,6 +8,7 @@ import useApiResource from "../../hooks/useApiResource";
 import LanguageToggle from "../../components/LanguageToggle";
 import { ErrorState } from "../../components/StateViews";
 import MultiSelect from "../../components/MultiSelect";
+import DistrictSearchInput from "../../components/DistrictSearchInput";
 
 const CONSENT_POLICY_VERSION = "v1";
 
@@ -17,8 +18,11 @@ const CONSENT_POLICY_VERSION = "v1";
  * Laid out like the farmer registration it sits beside, with the fields an
  * officer application needs: identity, district, procurement centre, and crop.
  *
- * Registration creates the officer account immediately and verifies the
- * submitted mobile number through the shared OTP screen.
+ * Registration creates NO account. It submits a review request
+ * (`officer_registration_requests`); an administrator with `officer.create`
+ * approves or rejects it. There is no OTP step here — nothing exists yet to
+ * verify a phone number against — so a successful submit shows a plain
+ * confirmation instead of handing off to the OTP screen.
  */
 function OfficerRegistration() {
   const { t } = useTranslation();
@@ -37,6 +41,9 @@ function OfficerRegistration() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  // Set once the application is accepted for review. There is no account and
+  // no OTP step to send the applicant to — an administrator decides next.
+  const [submitted, setSubmitted] = useState(false);
 
   const districts = useApiResource((signal) => api.districts(signal), []);
 
@@ -120,7 +127,7 @@ function OfficerRegistration() {
         cropIds.map((id) => [id, Number(cropStorage[id])]),
       );
 
-      const challenge = await api.staffRegister({
+      await api.staffRegister({
         fullName: fullName.trim(),
         phone: `+91${phone}`,
         districtId,
@@ -130,10 +137,11 @@ function OfficerRegistration() {
         consent: { policyVersion: CONSENT_POLICY_VERSION, accepted: true },
       });
 
-      navigate("/verify-otp", {
-        replace: true,
-        state: { challenge, phone, purpose: "staff" },
-      });
+      // This creates a review request, not an account: there is no session
+      // and nothing to verify by OTP yet, so there is nowhere to navigate to.
+      // An administrator approves or rejects it; the applicant is told to
+      // check back / sign in once that happens.
+      setSubmitted(true);
     } catch (error) {
       const fields = translateFieldErrors(t, error);
 
@@ -189,6 +197,39 @@ function OfficerRegistration() {
       </div>
     </header>
   );
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-[#f3f5f3] text-black">
+        {header}
+
+        <main className="mx-auto flex min-h-[calc(100vh-72px)] w-full max-w-[1000px] items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+          <section className="w-full max-w-[560px] rounded-[24px] border border-slate-200 bg-white p-7 text-center shadow-[0_8px_30px_rgba(16,64,42,0.06)] sm:p-9">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-2xl">
+              ✅
+            </div>
+
+            <h1 className="mt-5 text-2xl font-extrabold tracking-tight text-black">
+              {t("applicationSubmitted") || "Application submitted"}
+            </h1>
+
+            <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-black">
+              {t("applicationSubmittedDescription") ||
+                "Your officer account application has been sent for review. There is no account yet — an administrator must approve it before you can sign in with this mobile number."}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => navigate("/staff-login")}
+              className="mt-6 min-h-13 w-full rounded-xl bg-[#0e8a48] text-sm font-bold text-white transition hover:bg-[#0c763e]"
+            >
+              {t("backToStaffLogin") || "Back to staff login"}
+            </button>
+          </section>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f3f5f3] text-black">
@@ -325,13 +366,25 @@ function OfficerRegistration() {
                 </p>
 
                 <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                  <div>
+                  <div className="space-y-2">
                     <label
                       htmlFor="districtId"
-                      className="mb-2 block text-sm font-bold text-black"
+                      className="block text-sm font-bold text-black"
                     >
                       {t("district")}
                     </label>
+
+                    <DistrictSearchInput
+                      districts={districts.data ?? []}
+                      selectedDistrictId={districtId}
+                      onSelectDistrict={(id) => {
+                        setDistrictId(id);
+                        setCentreId("");
+                        clearFieldError("districtId");
+                        clearFieldError("centreId");
+                      }}
+                      disabled={districts.loading}
+                    />
 
                     <select
                       id="districtId"
