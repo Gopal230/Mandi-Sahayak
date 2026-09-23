@@ -59,6 +59,7 @@ export const AuditActions = {
   CENTRE_HOLIDAY_SET: 'centre.holiday_set',
   CENTRE_CROP_CONFIGURED: 'centre.crop_configured',
   CENTRE_SLOT_CONFIGURED: 'centre.slot_configured',
+  STORAGE_REPORTED: 'storage.reported',
   OFFICER_ASSIGNED: 'officer.assigned',
   OFFICER_ASSIGNMENT_REVOKED: 'officer.assignment_revoked',
   OFFICER_CREATED: 'officer.created',

@@ -32,6 +32,7 @@ function OfficerRegistration() {
   const [phone, setPhone] = useState("");
   const [districtId, setDistrictId] = useState("");
   const [centreId, setCentreId] = useState("");
+  const [employeeCode, setEmployeeCode] = useState("");
   const [cropIds, setCropIds] = useState([]);
   // Storage capacity in quintals, keyed by crop id. One entry per selected
   // crop; entries for a crop that gets deselected are dropped along with it.
@@ -132,6 +133,7 @@ function OfficerRegistration() {
         phone: `+91${phone}`,
         districtId,
         centreId,
+        employeeCode: employeeCode.trim() || undefined,
         cropIds,
         cropStorageQuintals,
         consent: { policyVersion: CONSENT_POLICY_VERSION, accepted: true },
@@ -479,6 +481,38 @@ function OfficerRegistration() {
                       </p>
                     )}
                   </div>
+                </div>
+
+                <div className="mt-5">
+                  <label
+                    htmlFor="employeeCode"
+                    className="mb-2 block text-sm font-bold text-black"
+                  >
+                    {t("officerIdOptional")}
+                  </label>
+
+                  <input
+                    id="employeeCode"
+                    type="text"
+                    value={employeeCode}
+                    maxLength={64}
+                    placeholder={t("officerIdPlaceholder")}
+                    onChange={(event) => {
+                      setEmployeeCode(event.target.value);
+                      clearFieldError("employeeCode");
+                    }}
+                    className={inputClasses(fieldErrors.employeeCode)}
+                  />
+
+                  <p className="mt-1.5 text-xs leading-5 text-black">
+                    {t("officerIdDemoNote")}
+                  </p>
+
+                  {fieldErrors.employeeCode && (
+                    <p className="mt-1.5 text-xs font-semibold text-red-700">
+                      {fieldErrors.employeeCode}
+                    </p>
+                  )}
                 </div>
 
                 <div className="mt-5">

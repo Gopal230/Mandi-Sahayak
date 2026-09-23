@@ -310,8 +310,8 @@ export async function submitOfficerRegistration(
     const request = await client.query<{ id: string }>(
       `INSERT INTO officer_registration_requests
          (full_name, phone_e164, requested_centre_id, requested_district_id,
-          requested_crop_ids, crop_storage_quintals)
-       VALUES ($1, $2, $3, $4, $5, $6)
+          requested_crop_ids, crop_storage_quintals, employee_code)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
       [
         input.fullName,
@@ -320,6 +320,7 @@ export async function submitOfficerRegistration(
         input.districtId,
         input.cropIds,
         JSON.stringify(input.cropStorageQuintals),
+        input.employeeCode || null,
       ],
     );
     requestId = request.rows[0].id;
@@ -329,8 +330,19 @@ export async function submitOfficerRegistration(
     // Postgres unique_violation. A second application for a phone that
     // already has one PENDING is a conflict, not a validation failure — the
     // applicant needs to know an application already exists, not that this
-    // one was malformed.
-    if ((error as { code?: string }).code === "23505") {
+    // one was malformed. The employee-code index can conflict too, now that
+    // applicants may type their own (demo, unverified) preferred code —
+    // that is a different, narrower conflict and gets its own message rather
+    // than being folded into "phone already registered".
+    const pgError = error as { code?: string; constraint?: string };
+    if (pgError.code === "23505") {
+      if (pgError.constraint === "officer_registration_requests_one_pending_employee_code") {
+        throw conflict(
+          ErrorCodes.VALIDATION_FAILED,
+          "That officer ID is already used by another pending application.",
+          { employeeCode: "EMPLOYEE_CODE_ALREADY_PENDING" },
+        );
+      }
       throw conflict(
         ErrorCodes.PHONE_ALREADY_REGISTERED,
         "An application for this phone number is already pending review.",

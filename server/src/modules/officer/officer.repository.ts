@@ -322,6 +322,8 @@ export async function centreCropStorage(
     canonical_name: string;
     storage_capacity_kg: string | null;
     occupied_kg: string;
+    officer_reported_available_kg: string | null;
+    officer_reported_at: string | null;
   }>
 > {
   const res = await query<{
@@ -329,10 +331,14 @@ export async function centreCropStorage(
     canonical_name: string;
     storage_capacity_kg: string | null;
     occupied_kg: string;
+    officer_reported_available_kg: string | null;
+    officer_reported_at: string | null;
   }>(
     `SELECT c.id AS crop_id, c.canonical_name,
             ccc.storage_capacity_kg::text AS storage_capacity_kg,
-            COALESCE(SUM(pr.accepted_quantity_kg), 0)::text AS occupied_kg
+            COALESCE(SUM(pr.accepted_quantity_kg), 0)::text AS occupied_kg,
+            ccc.officer_reported_available_kg::text AS officer_reported_available_kg,
+            ccc.officer_reported_at::text AS officer_reported_at
        FROM centre_crop_configurations ccc
        JOIN crops c ON c.id = ccc.crop_id
        LEFT JOIN bookings b
@@ -341,11 +347,36 @@ export async function centreCropStorage(
              AND b.status = 'COMPLETED'
        LEFT JOIN procurements pr ON pr.booking_id = b.id
       WHERE ccc.centre_id = $1 AND ccc.is_active
-      GROUP BY c.id, c.canonical_name, ccc.storage_capacity_kg
+      GROUP BY c.id, c.canonical_name, ccc.storage_capacity_kg,
+               ccc.officer_reported_available_kg, ccc.officer_reported_at
       ORDER BY c.canonical_name`,
     [centreId],
   );
   return res.rows;
+}
+
+/**
+ * Records the officer's own confirmation of how much space is actually free
+ * for one crop right now — separate from the COMPLETED-bookings figure,
+ * which only knows what this app itself has procured. Scoped to
+ * `centre_id = $1 AND crop_id = $2 AND is_active` so an officer cannot
+ * report against a crop their centre does not (or no longer) handle.
+ */
+export async function setOfficerReportedStorage(
+  centreId: string,
+  cropId: string,
+  availableKg: number,
+  userId: string,
+): Promise<boolean> {
+  const res = await query(
+    `UPDATE centre_crop_configurations
+        SET officer_reported_available_kg = $3,
+            officer_reported_at = now(),
+            officer_reported_by_user_id = $4
+      WHERE centre_id = $1 AND crop_id = $2 AND is_active`,
+    [centreId, cropId, availableKg, userId],
+  );
+  return (res.rowCount ?? 0) > 0;
 }
 
 // ---------------------------------------------------------------------------

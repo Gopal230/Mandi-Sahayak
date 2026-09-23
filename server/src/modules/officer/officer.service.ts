@@ -737,7 +737,12 @@ export async function centreOverview(centreId: string, serviceDate: string, time
 
 /**
  * Crop-wise storage summary for the dashboard: capacity recorded at officer
- * registration against grain actually on hand (COMPLETED bookings).
+ * registration against grain actually on hand (COMPLETED bookings), plus the
+ * officer's own periodic confirmation of what is actually free right now —
+ * the app's own bookings are not the only thing that moves grain in or out
+ * of a real warehouse, so `availableKg` (computed) and
+ * `officerReportedAvailableKg` (self-reported) are both surfaced rather than
+ * one silently standing in for the other.
  */
 export async function centreStorageSummary(centreId: string) {
   const rows = await repo.centreCropStorage(centreId);
@@ -758,6 +763,12 @@ export async function centreStorageSummary(centreId: string) {
       occupiedKg,
       availableKg,
       filledPercent,
+      officerReportedAvailableKg: num(row.officer_reported_available_kg),
+      officerReportedAt: row.officer_reported_at,
+      // The dashboard's fill-me-in reminder watches this: a crop with a
+      // recorded capacity that the officer has never confirmed a real
+      // available figure for.
+      needsOfficerReport: capacityKg !== null && row.officer_reported_at === null,
       reasonCode: capacityKg === null ? 'NO_STORAGE_CAPACITY_CONFIGURED' : null,
     };
   });

@@ -204,6 +204,8 @@ function OfficerPortal() {
                     morningSetup={morningSetup}
                     storageSummary={storageSummary.data?.crops ?? []}
                     onSaveMorningSetup={setMorningSetup}
+                    centreId={centre.centreId}
+                    onReloadStorage={storageSummary.reload}
                   />
                 }
               />

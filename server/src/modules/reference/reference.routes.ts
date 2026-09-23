@@ -353,12 +353,17 @@ export function buildReferenceRouter(): Router {
         season_name: string | null;
         marketing_year: string | null;
         grades: string[] | null;
+        grade_rates: { grade: string | null; ratePerQuintalPaise: string }[] | null;
         centre_count: number;
       }>(
         `SELECT c.id, c.code, c.canonical_name, c.data_type,
                 s.code AS season_code, s.name AS season_name,
                 m.marketing_year,
                 array_remove(array_agg(DISTINCT m.variety_or_grade), NULL) AS grades,
+                jsonb_agg(DISTINCT jsonb_build_object(
+                  'grade', m.variety_or_grade,
+                  'ratePerQuintalPaise', m.rate_per_quintal_paise
+                )) FILTER (WHERE m.id IS NOT NULL) AS grade_rates,
                 (SELECT count(*)::int
                    FROM centre_crop_configurations ccc
                   WHERE ccc.crop_id = c.id AND ccc.is_active) AS centre_count
@@ -389,6 +394,20 @@ export function buildReferenceRouter(): Router {
           // Common / Grade A). A grade-less lookup for such a crop is ambiguous
           // by design — see D-9.
           grades: (r.grades ?? []).sort(),
+          /*
+           * MSP, straight from the official import — one entry per grade the
+           * source publishes a distinct rate for, so a single-rate crop reads
+           * as one entry and a graded crop (Paddy, Jowar, Cotton) is never
+           * collapsed into a single misleading number. Rupees, not paise —
+           * paise is the storage unit, not something a farmer should have to
+           * divide by 100 in their head.
+           */
+          mspRates: (r.grade_rates ?? [])
+            .map((gr) => ({
+              grade: gr.grade,
+              ratePerQuintal: Number(gr.ratePerQuintalPaise) / 100,
+            }))
+            .sort((a, b) => (a.grade ?? "").localeCompare(b.grade ?? "")),
           eligibleCentreCount: r.centre_count,
         })),
       );
@@ -426,6 +445,30 @@ export function buildReferenceRouter(): Router {
         });
       }
 
+      /*
+       * The farmer's own district is never asked for again here — it was
+       * captured once, at registration, and lives on their farmer row. A
+       * signed-in farmer's request therefore carries it implicitly, purely to
+       * TAG and ORDER results (home district first, then centres sharing the
+       * farmer's state, then the rest); it never narrows which centres are
+       * returned — `cropId` is what decides that, unchanged. Staff and
+       * unauthenticated-shaped requests (no farmer row) simply get no tag.
+       */
+      let farmerDistrictId: string | null = null;
+      let farmerStateId: string | null = null;
+      if (!req.actor!.isStaff) {
+        const farmerRow = await query<{ district_id: string; state_id: string }>(
+          `SELECT f.district_id, d.state_id
+             FROM farmers f JOIN districts d ON d.id = f.district_id
+            WHERE f.user_id = $1`,
+          [req.actor!.userId],
+        );
+        if (farmerRow.rowCount) {
+          farmerDistrictId = farmerRow.rows[0].district_id;
+          farmerStateId = farmerRow.rows[0].state_id;
+        }
+      }
+
       const result = await query<{
         id: string;
         code: string;
@@ -435,6 +478,7 @@ export function buildReferenceRouter(): Router {
         storage_check_mode: string;
         district_name: string;
         district_id: string;
+        district_state_id: string;
         lane_count: number;
         crops: string[] | null;
         mandi_name: string | null;
@@ -444,7 +488,7 @@ export function buildReferenceRouter(): Router {
         mandi_source_url: string | null;
       }>(
         `SELECT pc.id, pc.code, pc.name, pc.data_type, pc.timezone, pc.storage_check_mode,
-                d.name AS district_name, d.id AS district_id,
+                d.name AS district_name, d.id AS district_id, d.state_id AS district_state_id,
                 m.name AS mandi_name, m.grade AS mandi_grade, m.data_type AS mandi_data_type,
                 ds.publisher AS mandi_publisher, ds.source_url AS mandi_source_url,
                 (SELECT count(*)::int FROM centre_service_lanes l
@@ -462,8 +506,14 @@ export function buildReferenceRouter(): Router {
             AND ($2::uuid IS NULL OR EXISTS (
                   SELECT 1 FROM centre_crop_configurations ccc
                    WHERE ccc.centre_id = pc.id AND ccc.crop_id = $2::uuid AND ccc.is_active))
-          ORDER BY pc.name`,
-        [districtId, cropId],
+          ORDER BY
+            CASE
+              WHEN $3::uuid IS NOT NULL AND d.id = $3::uuid THEN 0
+              WHEN $4::uuid IS NOT NULL AND d.state_id = $4::uuid THEN 1
+              ELSE 2
+            END,
+            pc.name`,
+        [districtId, cropId, farmerDistrictId, farmerStateId],
       );
 
       sendData(
@@ -475,6 +525,21 @@ export function buildReferenceRouter(): Router {
           name: r.name,
           dataType: r.data_type,
           district: { id: r.district_id, name: r.district_name },
+          /*
+           * Proximity is a TAG, not a distance — no district carries lat/long
+           * in this dataset, and this codebase does not invent figures it
+           * cannot back (see the storage headroom note below). "In the
+           * farmer's district" and "same state" are the only claims the data
+           * actually supports; the sort order above already puts the nearer
+           * tag first, so the UI does not need a number to rank by.
+           */
+          proximity: !farmerDistrictId
+            ? null
+            : r.district_id === farmerDistrictId
+              ? "HOME_DISTRICT"
+              : r.district_state_id === farmerStateId
+                ? "SAME_STATE"
+                : "OTHER_STATE",
           /*
            * The market the centre sits in, when one is published.
            *

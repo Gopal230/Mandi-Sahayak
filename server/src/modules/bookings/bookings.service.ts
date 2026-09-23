@@ -12,9 +12,13 @@ import { AppError, ErrorCodes, conflict, notFound, unprocessable } from '../../c
 import { writeAudit, AuditActions } from '../../core/audit.ts';
 import {
   addDays,
+  allOnDay,
+  dayOfWeekFor,
   findEarliest,
+  laneFreeAt,
   localDateOf,
   durationBreakdown,
+  zonedToUtc,
 } from '../../engines/scheduling.ts';
 import type { Candidate, DayInput } from '../../engines/scheduling.ts';
 import * as repo from './bookings.repository.ts';
@@ -172,6 +176,86 @@ export function candidateToView(candidate: Candidate, centre: CentreContext) {
   };
 }
 
+/**
+ * Every bookable window on the first day (from `fromDate` forward, within the
+ * horizon) that has any — not just the single earliest — each carrying an
+ * ESTIMATED position within its lane's existing queue. The position is a
+ * snapshot: it reflects what is booked right now, not a reservation, since
+ * another farmer can still book ahead of it before this one confirms.
+ */
+export async function findAvailabilityList(input: {
+  centreId: string;
+  cropId: string;
+  quantityKg: number;
+  fromDate?: string;
+  now?: Date;
+  db?: PoolClient | null;
+}) {
+  const now = input.now ?? new Date();
+  const db = input.db ?? null;
+
+  const { centre, fromDate } = await resolveCentreForDate(input.centreId, input.fromDate, now, db);
+  const crop = await requireCropAtCentre(input.centreId, input.cropId, fromDate, db);
+
+  const loadDay = async (serviceDate: string): Promise<DayInput> => ({
+    serviceDate,
+    timeZone: centre.timezone,
+    hours: centre.hours,
+    holidays: centre.holidays,
+    lanes: centre.lanes,
+    existing: await repo.loadDayOccupancy(centre.centreId, serviceDate, db),
+  });
+
+  let day: DayInput | null = null;
+  let candidates: Candidate[] = [];
+  let anyOpenDay = false;
+
+  for (let offset = 0; offset <= centre.config.bookingHorizonDays; offset += 1) {
+    const serviceDate = addDays(fromDate, offset);
+    const loaded = await loadDay(serviceDate);
+
+    const dow = dayOfWeekFor(serviceDate, loaded.timeZone);
+    const open = !loaded.holidays.has(serviceDate) && loaded.hours.some((h) => h.dayOfWeek === dow);
+    if (open) anyOpenDay = true;
+
+    const found = allOnDay(loaded, input.quantityKg, centre.config, now);
+    if (found.length > 0) {
+      day = loaded;
+      candidates = found;
+      break;
+    }
+  }
+
+  const duration = durationBreakdown(input.quantityKg, centre.config);
+
+  const slots = day
+    ? candidates.map((candidate) => {
+        // Bookings already in this lane that start before this candidate —
+        // this farmer would be that many places behind them.
+        const aheadInLane = day!.existing.filter(
+          (e) =>
+            e.laneNo === candidate.laneNo && e.startAt.getTime() < candidate.startAt.getTime(),
+        ).length;
+
+        return {
+          ...candidateToView(candidate, centre),
+          estimatedQueuePosition: aheadInLane + 1,
+        };
+      })
+    : [];
+
+  return {
+    centre,
+    crop,
+    slots,
+    available: slots.length > 0,
+    reasonCode: slots.length === 0 ? (anyOpenDay ? 'ALL_DAYS_FULL' : 'CENTRE_CLOSED_ON_DATE') : null,
+    duration,
+    storageCheck: storageCheckFor(centre),
+    now,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Creation
 // ---------------------------------------------------------------------------
@@ -185,6 +269,9 @@ export type CreateInput = {
   cropId: string;
   quantityKg: number;
   preferredDate?: string;
+  /** A specific slot the farmer chose from the availability list, both or neither. */
+  laneNo?: number;
+  startAt?: string;
   idempotencyKey: string;
   requestHash: Buffer;
 };
@@ -211,6 +298,63 @@ export async function createBooking(input: CreateInput, ctx: Ctx): Promise<Creat
     lastConflict ??
     conflict(ErrorCodes.SLOT_NO_LONGER_AVAILABLE, 'Could not secure a window after several attempts')
   );
+}
+
+/**
+ * Turns a farmer-chosen (laneNo, startAt) into a Candidate, re-checking it
+ * against the lane's actual free intervals rather than trusting the client —
+ * the same list a farmer saw a moment ago can be stale by the time they tap
+ * "book this slot".
+ */
+function candidateForChosenSlot(
+  centre: CentreContext,
+  day: DayInput,
+  quantityKg: number,
+  laneNo: number,
+  startAt: Date,
+  now: Date,
+): Candidate {
+  if (Number.isNaN(startAt.getTime()) || startAt.getTime() < now.getTime()) {
+    throw conflict(ErrorCodes.SLOT_NO_LONGER_AVAILABLE, 'Chosen slot is no longer available');
+  }
+  if (!centre.lanes.includes(laneNo)) {
+    throw unprocessable(ErrorCodes.VALIDATION_FAILED, 'Unknown lane for this centre');
+  }
+  if (day.holidays.has(day.serviceDate)) {
+    throw conflict(ErrorCodes.SLOT_NO_LONGER_AVAILABLE, 'Chosen slot is no longer available');
+  }
+
+  const { processingMinutes: proc, bufferMinutes, occupancyMinutes: occ } = durationBreakdown(
+    quantityKg,
+    centre.config,
+  );
+
+  const dow = dayOfWeekFor(day.serviceDate, day.timeZone);
+  const occupied = day.existing.filter((e) => e.laneNo === laneNo);
+  const fits = day.hours
+    .filter((h) => h.dayOfWeek === dow)
+    .some((h) => {
+      const working = {
+        startAt: zonedToUtc(day.serviceDate, h.opensAt.slice(0, 5), day.timeZone),
+        endAt: zonedToUtc(day.serviceDate, h.closesAt.slice(0, 5), day.timeZone),
+      };
+      return laneFreeAt(working, occupied, startAt, occ);
+    });
+
+  if (!fits) {
+    throw conflict(ErrorCodes.SLOT_NO_LONGER_AVAILABLE, 'Chosen slot is no longer available');
+  }
+
+  return {
+    laneNo,
+    serviceDate: day.serviceDate,
+    startAt,
+    endAt: new Date(startAt.getTime() + occ * 60_000),
+    processingEndAt: new Date(startAt.getTime() + proc * 60_000),
+    processingMinutes: proc,
+    bufferMinutes,
+    occupancyMinutes: occ,
+  };
 }
 
 async function attemptCreate(input: CreateInput, ctx: Ctx, attempt: number): Promise<CreateResult> {
@@ -252,31 +396,53 @@ async function attemptCreate(input: CreateInput, ctx: Ctx, attempt: number): Pro
     // 3. Storage: ADVISORY, so nothing is enforced and nothing is invented.
     const storageCheck = storageCheckFor(centre);
 
-    // 4. Search, now under the lock.
-    const search = await findEarliest(
-      fromDate,
-      centre.config.bookingHorizonDays,
-      input.quantityKg,
-      centre.config,
-      now,
-      async (serviceDate) => ({
+    // 4. Resolve the candidate, now under the lock. A farmer who picked a
+    //    specific slot from the availability list gets that slot re-verified
+    //    against current occupancy; everyone else gets the earliest window,
+    //    exactly as before.
+    let candidate: Candidate;
+
+    if (input.laneNo !== undefined && input.startAt) {
+      const chosenStart = new Date(input.startAt);
+      const serviceDate = Number.isNaN(chosenStart.getTime())
+        ? fromDate
+        : localDateOf(chosenStart, centre.timezone);
+      assertWithinHorizon(centre, serviceDate, now);
+      const day: DayInput = {
         serviceDate,
         timeZone: centre.timezone,
         hours: centre.hours,
         holidays: centre.holidays,
         lanes: centre.lanes,
         existing: await repo.loadDayOccupancy(centre.centreId, serviceDate, client),
-      }),
-    );
+      };
+      candidate = candidateForChosenSlot(centre, day, input.quantityKg, input.laneNo, chosenStart, now);
+    } else {
+      const search = await findEarliest(
+        fromDate,
+        centre.config.bookingHorizonDays,
+        input.quantityKg,
+        centre.config,
+        now,
+        async (serviceDate) => ({
+          serviceDate,
+          timeZone: centre.timezone,
+          hours: centre.hours,
+          holidays: centre.holidays,
+          lanes: centre.lanes,
+          existing: await repo.loadDayOccupancy(centre.centreId, serviceDate, client),
+        }),
+      );
 
-    if (!search.found) {
-      throw unprocessable(ErrorCodes.NO_AVAILABILITY, 'No available window within the horizon', {
-        reasonCode: search.reason,
-        horizonDays: centre.config.bookingHorizonDays,
-      });
+      if (!search.found) {
+        throw unprocessable(ErrorCodes.NO_AVAILABILITY, 'No available window within the horizon', {
+          reasonCode: search.reason,
+          horizonDays: centre.config.bookingHorizonDays,
+        });
+      }
+
+      candidate = search.candidate;
     }
-
-    const candidate = search.candidate;
 
     // The chosen day may differ from the requested one; lock that day too.
     if (candidate.serviceDate !== fromDate) {

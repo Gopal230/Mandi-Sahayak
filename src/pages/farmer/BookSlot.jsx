@@ -9,6 +9,7 @@ import { translateError, translateReason } from "../../lib/codes";
 import {
   formatDate,
   formatMinutes,
+  formatTime,
   formatTimeRange,
   quintalToKg,
   todayInZone,
@@ -28,8 +29,10 @@ function BookSlot() {
   const [preferredDate, setPreferredDate] = useState("");
 
   const [offer, setOffer] = useState(null);
+  const [selectedSlotKey, setSelectedSlotKey] = useState(null);
   const [searching, setSearching] = useState(false);
   const [booking, setBooking] = useState(false);
+  const [bookingSlotKey, setBookingSlotKey] = useState(null);
   const [error, setError] = useState(null);
   const [fieldError, setFieldError] = useState(null);
 
@@ -49,6 +52,32 @@ function BookSlot() {
 
   const selectedCrop = (crops.data ?? []).find((crop) => crop.id === cropId) ?? null;
   const selectedCentre = (centres.data ?? []).find((centre) => centre.id === centreId) ?? null;
+
+  // Several lanes can open at the same instant; the farmer picks a TIME, not
+  // a lane, so lanes sharing a start collapse into the one option with the
+  // shortest estimated queue (lane number breaks a tie) instead of listing
+  // every lane separately.
+  const offerSlots = useMemo(() => {
+    const byStart = new Map();
+    for (const slot of offer?.slots ?? []) {
+      const existing = byStart.get(slot.scheduledStartAt);
+      if (
+        !existing ||
+        slot.estimatedQueuePosition < existing.estimatedQueuePosition ||
+        (slot.estimatedQueuePosition === existing.estimatedQueuePosition &&
+          slot.laneNo < existing.laneNo)
+      ) {
+        byStart.set(slot.scheduledStartAt, slot);
+      }
+    }
+    return [...byStart.values()];
+  }, [offer]);
+
+  const selectedSlot =
+    offerSlots.find((slot) => slotKeyOf(slot) === selectedSlotKey) ?? offerSlots[0] ?? null;
+  const isBookingSelected = Boolean(
+    booking && selectedSlot && bookingSlotKey === slotKeyOf(selectedSlot),
+  );
 
   const visibleCrops = useMemo(
     () => filterCrops(crops.data ?? [], cropQuery),
@@ -70,8 +99,13 @@ function BookSlot() {
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [cropListOpen]);
 
+  function slotKeyOf(slot) {
+    return `${slot.laneNo}:${slot.scheduledStartAt}`;
+  }
+
   function invalidateOffer() {
     setOffer(null);
+    setSelectedSlotKey(null);
     setError(null);
     idempotencyKey.current = newIdempotencyKey();
   }
@@ -112,6 +146,7 @@ function BookSlot() {
     setError(null);
     setSearching(true);
     setOffer(null);
+    setSelectedSlotKey(null);
 
     try {
       const result = await api.availability({
@@ -122,6 +157,7 @@ function BookSlot() {
       });
 
       setOffer(result);
+      setSelectedSlotKey((result.slots ?? [])[0] ? slotKeyOf(result.slots[0]) : null);
     } catch (searchError) {
       setError(searchError);
     } finally {
@@ -129,8 +165,9 @@ function BookSlot() {
     }
   }
 
-  async function handleConfirm() {
+  async function handleConfirm(slot) {
     setBooking(true);
+    setBookingSlotKey(slot ? slotKeyOf(slot) : null);
     setError(null);
 
     try {
@@ -140,6 +177,7 @@ function BookSlot() {
           cropId,
           quantityKg: quintalToKg(quantityQuintal, quantity?.kgPerQuintal ?? 100),
           preferredDate: preferredDate || undefined,
+          ...(slot ? { laneNo: slot.laneNo, startAt: slot.scheduledStartAt } : {}),
         },
         idempotencyKey.current,
       );
@@ -152,6 +190,7 @@ function BookSlot() {
       }
     } finally {
       setBooking(false);
+      setBookingSlotKey(null);
     }
   }
 
@@ -282,12 +321,22 @@ function BookSlot() {
                     : t("selectProcurementCentre")}
               </option>
 
-              {(centres.data ?? []).map((centre) => (
-                <option key={centre.id} value={centre.id}>
-                  {centre.mandi ? `${centre.mandi.name} Mandi` : centre.name} —{" "}
-                  {centre.district?.name}
-                </option>
-              ))}
+              {(centres.data ?? []).map((centre) => {
+                const label = centre.mandi ? `${centre.mandi.name} Mandi` : centre.name;
+                const proximity =
+                  centre.proximity === "HOME_DISTRICT"
+                    ? t("inYourDistrict")
+                    : centre.district?.name
+                      ? t("inOtherDistrict", { district: centre.district.name })
+                      : null;
+
+                return (
+                  <option key={centre.id} value={centre.id}>
+                    {label}
+                    {proximity ? ` — ${proximity}` : ""}
+                  </option>
+                );
+              })}
             </select>
 
             {cropId && !centres.loading && (centres.data ?? []).length === 0 && (
@@ -394,68 +443,116 @@ function BookSlot() {
         </section>
       )}
 
-      {offer?.available && offer.window && (
-        <section className="mt-4 overflow-hidden rounded-2xl border border-green-200 bg-white shadow-sm">
-          <div className="bg-green-50 px-4 py-3">
-            <h3 className="font-semibold text-black">{t("earliestAvailableWindow")}</h3>
-          </div>
-
-          <div className="divide-y divide-slate-100 px-4">
-            <div className="flex items-center justify-between py-3">
-              <span className="text-sm text-black">{t("date")}</span>
-              <span className="text-sm font-semibold text-black">
-                {formatDate(offer.window.serviceDate, offer.window.centreTimezone, locale)}
-              </span>
+      {offer?.available && offerSlots.length > 0 && selectedSlot && (
+          <section className="mt-4 overflow-hidden rounded-2xl border border-green-200 bg-white shadow-sm">
+            <div className="bg-green-50 px-4 py-3">
+              <h3 className="font-semibold text-black">{t("availableWindows")}</h3>
             </div>
 
-            <div className="flex items-center justify-between py-3">
-              <span className="text-sm text-black">{t("arriveBy")}</span>
-              <span className="text-sm font-semibold text-black">
-                {formatTimeRange(
-                  offer.window.scheduledStartAt,
-                  offer.window.processingEndAt,
-                  offer.window.centreTimezone,
-                  locale,
-                )}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between py-3">
-              <span className="text-sm text-black">{t("processingTime")}</span>
-              <span className="text-sm font-semibold text-black">
-                {formatMinutes(offer.window.processingMinutes, locale, {
-                  hour: t("hoursShort"),
-                  minute: t("minutesShort"),
+            <div className="px-4 pt-4 pb-2">
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-black">
+                {t("pickATime")}
+              </label>
+              <select
+                value={slotKeyOf(selectedSlot)}
+                onChange={(event) => setSelectedSlotKey(event.target.value)}
+                className="min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-black outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+              >
+                {offerSlots.map((slot) => {
+                  const slotKey = slotKeyOf(slot);
+                  return (
+                    <option key={slotKey} value={slotKey}>
+                      {formatTime(slot.scheduledStartAt, slot.centreTimezone, locale)} — {" "}
+                      {t("estimatedQueuePosition", { position: slot.estimatedQueuePosition })}
+                    </option>
+                  );
                 })}
-              </span>
+              </select>
             </div>
 
-            <div className="flex items-center justify-between py-3">
-              <span className="text-sm text-black">{t("lane")}</span>
-              <span className="text-sm font-semibold text-black">{offer.window.laneNo}</span>
+            <div className="divide-y divide-slate-100 px-4">
+              <div className="flex items-center justify-between py-3">
+                <span className="text-sm text-black">{t("date")}</span>
+                <span className="text-sm font-semibold text-black">
+                  {formatDate(selectedSlot.serviceDate, selectedSlot.centreTimezone, locale)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-3">
+                <span className="text-sm text-black">{t("arriveBy")}</span>
+                <span className="text-sm font-semibold text-black">
+                  {formatTimeRange(
+                    selectedSlot.scheduledStartAt,
+                    selectedSlot.processingEndAt,
+                    selectedSlot.centreTimezone,
+                    locale,
+                  )}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-3">
+                <span className="text-sm text-black">{t("processingTime")}</span>
+                <span className="text-sm font-semibold text-black">
+                  {formatMinutes(selectedSlot.processingMinutes, locale, {
+                    hour: t("hoursShort"),
+                    minute: t("minutesShort"),
+                  })}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-3">
+                <span className="text-sm text-black">{t("lane")}</span>
+                <span className="text-sm font-semibold text-black">{selectedSlot.laneNo}</span>
+              </div>
+
+              <div className="flex items-center justify-between py-3">
+                <span className="text-sm text-black">{t("estimatedQueuePositionLabel")}</span>
+                <span className="text-sm font-semibold text-black">
+                  {selectedSlot.estimatedQueuePosition}
+                </span>
+              </div>
+
+              {(selectedCrop?.mspRates ?? []).length > 0 && (
+                <div className="py-3">
+                  <span className="text-sm text-black">{t("mspRateLabel")}</span>
+                  <div className="mt-1.5 space-y-1">
+                    {selectedCrop.mspRates.map((rate) => (
+                      <div
+                        key={rate.grade ?? "single"}
+                        className="flex items-center justify-between"
+                      >
+                        {rate.grade && (
+                          <span className="text-xs text-black">{rate.grade}</span>
+                        )}
+                        <span className="ml-auto text-sm font-semibold text-black">
+                          ₹{rate.ratePerQuintal.toLocaleString("en-IN")} / {t("quintal")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
 
-          {}
-          {offer.storageCheck?.status === "NOT_AVAILABLE" && (
-            <p className="px-4 pb-2 text-xs text-black">
-              {translateReason(t, offer.storageCheck.reasonCode)}
-            </p>
-          )}
+            {offer.storageCheck?.status === "NOT_AVAILABLE" && (
+              <p className="px-4 pb-2 text-xs text-black">
+                {translateReason(t, offer.storageCheck.reasonCode)}
+              </p>
+            )}
 
-          <div className="p-4 pt-2">
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={booking}
-              className="min-h-12 w-full rounded-xl bg-green-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:bg-green-300"
-            >
-              {booking ? t("confirmingBooking") : t("bookThisWindow")}
-            </button>
+            <div className="p-4 pt-2">
+              <button
+                type="button"
+                onClick={() => handleConfirm(selectedSlot)}
+                disabled={booking}
+                className="min-h-12 w-full rounded-xl bg-green-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:bg-green-300"
+              >
+                {isBookingSelected ? t("confirmingBooking") : t("bookThisWindow")}
+              </button>
 
-            <p className="mt-2 text-center text-xs text-black">{t("windowNotHeldNote")}</p>
-          </div>
-        </section>
+              <p className="mt-2 text-center text-xs text-black">{t("windowNotHeldNote")}</p>
+            </div>
+          </section>
       )}
     </FarmerLayout>
   );

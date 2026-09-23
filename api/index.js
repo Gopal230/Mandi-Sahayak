@@ -516,6 +516,7 @@ var AuditActions = {
   CENTRE_HOLIDAY_SET: "centre.holiday_set",
   CENTRE_CROP_CONFIGURED: "centre.crop_configured",
   CENTRE_SLOT_CONFIGURED: "centre.slot_configured",
+  STORAGE_REPORTED: "storage.reported",
   OFFICER_ASSIGNED: "officer.assigned",
   OFFICER_ASSIGNMENT_REVOKED: "officer.assignment_revoked",
   OFFICER_CREATED: "officer.created",
@@ -896,6 +897,16 @@ var StaffRegisterSchema = z2.object({
   phone: PhoneSchema,
   districtId: z2.string().uuid("DISTRICT_ID_INVALID"),
   centreId: z2.string().uuid("CENTRE_ID_INVALID"),
+  /*
+   * A DEMO field, not a verified identity. There is no official employee
+   * registry to check this against yet, so any value is accepted here —
+   * it is carried onto the pending request purely as the applicant's own
+   * stated preference. An administrator can keep it, replace it, or assign
+   * one from scratch at approval (auth.service.ts submitOfficerRegistration
+   * / admin.routes.ts officer creation); nothing about the applicant's
+   * access is decided by what they typed here.
+   */
+  employeeCode: z2.string().trim().max(64).optional(),
   cropIds: z2.array(z2.string().uuid("CROP_ID_INVALID")).min(1, "CROP_ID_INVALID"),
   cropStorageQuintals: CropStorageQuintalsSchema,
   consent: ConsentSchema
@@ -1339,8 +1350,8 @@ async function submitOfficerRegistration(client, input, ctx2) {
     const request = await client.query(
       `INSERT INTO officer_registration_requests
          (full_name, phone_e164, requested_centre_id, requested_district_id,
-          requested_crop_ids, crop_storage_quintals)
-       VALUES ($1, $2, $3, $4, $5, $6)
+          requested_crop_ids, crop_storage_quintals, employee_code)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
       [
         input.fullName,
@@ -1348,13 +1359,22 @@ async function submitOfficerRegistration(client, input, ctx2) {
         input.centreId,
         input.districtId,
         input.cropIds,
-        JSON.stringify(input.cropStorageQuintals)
+        JSON.stringify(input.cropStorageQuintals),
+        input.employeeCode || null
       ]
     );
     requestId = request.rows[0].id;
   } catch (error) {
     await client.query("ROLLBACK TO SAVEPOINT staff_register_insert");
-    if (error.code === "23505") {
+    const pgError = error;
+    if (pgError.code === "23505") {
+      if (pgError.constraint === "officer_registration_requests_one_pending_employee_code") {
+        throw conflict(
+          ErrorCodes.VALIDATION_FAILED,
+          "That officer ID is already used by another pending application.",
+          { employeeCode: "EMPLOYEE_CODE_ALREADY_PENDING" }
+        );
+      }
       throw conflict(
         ErrorCodes.PHONE_ALREADY_REGISTERED,
         "An application for this phone number is already pending review."
@@ -2326,6 +2346,10 @@ function buildReferenceRouter() {
                 s.code AS season_code, s.name AS season_name,
                 m.marketing_year,
                 array_remove(array_agg(DISTINCT m.variety_or_grade), NULL) AS grades,
+                jsonb_agg(DISTINCT jsonb_build_object(
+                  'grade', m.variety_or_grade,
+                  'ratePerQuintalPaise', m.rate_per_quintal_paise
+                )) FILTER (WHERE m.id IS NOT NULL) AS grade_rates,
                 (SELECT count(*)::int
                    FROM centre_crop_configurations ccc
                   WHERE ccc.crop_id = c.id AND ccc.is_active) AS centre_count
@@ -2353,6 +2377,18 @@ function buildReferenceRouter() {
           // Common / Grade A). A grade-less lookup for such a crop is ambiguous
           // by design — see D-9.
           grades: (r.grades ?? []).sort(),
+          /*
+           * MSP, straight from the official import — one entry per grade the
+           * source publishes a distinct rate for, so a single-rate crop reads
+           * as one entry and a graded crop (Paddy, Jowar, Cotton) is never
+           * collapsed into a single misleading number. Rupees, not paise —
+           * paise is the storage unit, not something a farmer should have to
+           * divide by 100 in their head.
+           */
+          mspRates: (r.grade_rates ?? []).map((gr) => ({
+            grade: gr.grade,
+            ratePerQuintal: Number(gr.ratePerQuintalPaise) / 100
+          })).sort((a, b) => (a.grade ?? "").localeCompare(b.grade ?? "")),
           eligibleCentreCount: r.centre_count
         }))
       );
@@ -2381,9 +2417,23 @@ function buildReferenceRouter() {
           cropId: "CROP_ID_INVALID"
         });
       }
+      let farmerDistrictId = null;
+      let farmerStateId = null;
+      if (!req.actor.isStaff) {
+        const farmerRow = await query(
+          `SELECT f.district_id, d.state_id
+             FROM farmers f JOIN districts d ON d.id = f.district_id
+            WHERE f.user_id = $1`,
+          [req.actor.userId]
+        );
+        if (farmerRow.rowCount) {
+          farmerDistrictId = farmerRow.rows[0].district_id;
+          farmerStateId = farmerRow.rows[0].state_id;
+        }
+      }
       const result = await query(
         `SELECT pc.id, pc.code, pc.name, pc.data_type, pc.timezone, pc.storage_check_mode,
-                d.name AS district_name, d.id AS district_id,
+                d.name AS district_name, d.id AS district_id, d.state_id AS district_state_id,
                 m.name AS mandi_name, m.grade AS mandi_grade, m.data_type AS mandi_data_type,
                 ds.publisher AS mandi_publisher, ds.source_url AS mandi_source_url,
                 (SELECT count(*)::int FROM centre_service_lanes l
@@ -2401,8 +2451,14 @@ function buildReferenceRouter() {
             AND ($2::uuid IS NULL OR EXISTS (
                   SELECT 1 FROM centre_crop_configurations ccc
                    WHERE ccc.centre_id = pc.id AND ccc.crop_id = $2::uuid AND ccc.is_active))
-          ORDER BY pc.name`,
-        [districtId, cropId]
+          ORDER BY
+            CASE
+              WHEN $3::uuid IS NOT NULL AND d.id = $3::uuid THEN 0
+              WHEN $4::uuid IS NOT NULL AND d.state_id = $4::uuid THEN 1
+              ELSE 2
+            END,
+            pc.name`,
+        [districtId, cropId, farmerDistrictId, farmerStateId]
       );
       sendData(
         res,
@@ -2413,6 +2469,15 @@ function buildReferenceRouter() {
           name: r.name,
           dataType: r.data_type,
           district: { id: r.district_id, name: r.district_name },
+          /*
+           * Proximity is a TAG, not a distance — no district carries lat/long
+           * in this dataset, and this codebase does not invent figures it
+           * cannot back (see the storage headroom note below). "In the
+           * farmer's district" and "same state" are the only claims the data
+           * actually supports; the sort order above already puts the nearer
+           * tag first, so the UI does not need a number to rank by.
+           */
+          proximity: !farmerDistrictId ? null : r.district_id === farmerDistrictId ? "HOME_DISTRICT" : r.district_state_id === farmerStateId ? "SAME_STATE" : "OTHER_STATE",
           /*
            * The market the centre sits in, when one is published.
            *
@@ -2577,6 +2642,25 @@ function earliestOnLane(working, occupied, durationMinutes, notBefore, granulari
   }
   return null;
 }
+function allOnLane(working, occupied, durationMinutes, notBefore, granularityMinutes) {
+  const needed = durationMinutes * MIN_MS;
+  const step = Math.max(granularityMinutes, 1) * MIN_MS;
+  const starts = [];
+  for (const gap of freeIntervals(working, occupied)) {
+    const lowerBound = new Date(Math.max(gap.startAt.getTime(), notBefore.getTime()));
+    let start = snapUp(lowerBound, working.startAt, granularityMinutes);
+    while (start.getTime() + needed <= gap.endAt.getTime()) {
+      starts.push(start);
+      start = new Date(start.getTime() + step);
+    }
+  }
+  return starts;
+}
+function laneFreeAt(working, occupied, start, durationMinutes) {
+  const end = new Date(start.getTime() + durationMinutes * MIN_MS);
+  if (start < working.startAt || end > working.endAt) return false;
+  return !occupied.some((o) => o.startAt < end && o.endAt > start);
+}
 function earliestOnDay(day, quantityKg, cfg, notBefore) {
   if (day.holidays.has(day.serviceDate)) return null;
   if (day.lanes.length === 0) return null;
@@ -2613,6 +2697,45 @@ function earliestOnDay(day, quantityKg, cfg, notBefore) {
     }
   }
   return best;
+}
+function allOnDay(day, quantityKg, cfg, notBefore) {
+  if (day.holidays.has(day.serviceDate)) return [];
+  if (day.lanes.length === 0) return [];
+  const dow = dayOfWeekFor(day.serviceDate, day.timeZone);
+  const todaysHours = day.hours.filter((h) => h.dayOfWeek === dow);
+  if (todaysHours.length === 0) return [];
+  const { processingMinutes: proc, bufferMinutes, occupancyMinutes: occ } = durationBreakdown(
+    quantityKg,
+    cfg
+  );
+  const candidates = [];
+  for (const h of todaysHours) {
+    const working = {
+      startAt: zonedToUtc(day.serviceDate, h.opensAt.slice(0, 5), day.timeZone),
+      endAt: zonedToUtc(day.serviceDate, h.closesAt.slice(0, 5), day.timeZone)
+    };
+    if (working.endAt <= working.startAt) continue;
+    for (const laneNo of [...day.lanes].sort((a, b) => a - b)) {
+      const occupied = day.existing.filter((e) => e.laneNo === laneNo);
+      const starts = allOnLane(working, occupied, occ, notBefore, cfg.slotGranularityMinutes);
+      for (const start of starts) {
+        candidates.push({
+          laneNo,
+          serviceDate: day.serviceDate,
+          startAt: start,
+          endAt: new Date(start.getTime() + occ * MIN_MS),
+          processingEndAt: new Date(start.getTime() + proc * MIN_MS),
+          processingMinutes: proc,
+          bufferMinutes,
+          occupancyMinutes: occ
+        });
+      }
+    }
+  }
+  candidates.sort(
+    (a, b) => a.startAt.getTime() - b.startAt.getTime() || a.laneNo - b.laneNo
+  );
+  return candidates;
 }
 async function findEarliest(fromDate, horizonDays, quantityKg, cfg, notBefore, loadDay2) {
   let anyOpenDay = false;
@@ -3352,30 +3475,6 @@ function storageCheckFor(centre) {
     reasonCode: "NO_CAPACITY_DATA_FOR_CENTRE"
   };
 }
-async function findAvailability(input) {
-  const now = input.now ?? /* @__PURE__ */ new Date();
-  const db = input.db ?? null;
-  const { centre, fromDate } = await resolveCentreForDate(input.centreId, input.fromDate, now, db);
-  const crop = await requireCropAtCentre(input.centreId, input.cropId, fromDate, db);
-  const loadDay2 = async (serviceDate) => ({
-    serviceDate,
-    timeZone: centre.timezone,
-    hours: centre.hours,
-    holidays: centre.holidays,
-    lanes: centre.lanes,
-    existing: await loadDayOccupancy(centre.centreId, serviceDate, db)
-  });
-  const result = await findEarliest(
-    fromDate,
-    centre.config.bookingHorizonDays,
-    input.quantityKg,
-    centre.config,
-    now,
-    loadDay2
-  );
-  const duration = durationBreakdown(input.quantityKg, centre.config);
-  return { centre, crop, result, duration, storageCheck: storageCheckFor(centre), now };
-}
 function candidateToView(candidate, centre) {
   return {
     serviceDate: candidate.serviceDate,
@@ -3390,6 +3489,56 @@ function candidateToView(candidate, centre) {
     bufferMinutes: candidate.bufferMinutes,
     occupancyMinutes: candidate.occupancyMinutes,
     centreTimezone: centre.timezone
+  };
+}
+async function findAvailabilityList(input) {
+  const now = input.now ?? /* @__PURE__ */ new Date();
+  const db = input.db ?? null;
+  const { centre, fromDate } = await resolveCentreForDate(input.centreId, input.fromDate, now, db);
+  const crop = await requireCropAtCentre(input.centreId, input.cropId, fromDate, db);
+  const loadDay2 = async (serviceDate) => ({
+    serviceDate,
+    timeZone: centre.timezone,
+    hours: centre.hours,
+    holidays: centre.holidays,
+    lanes: centre.lanes,
+    existing: await loadDayOccupancy(centre.centreId, serviceDate, db)
+  });
+  let day = null;
+  let candidates = [];
+  let anyOpenDay = false;
+  for (let offset = 0; offset <= centre.config.bookingHorizonDays; offset += 1) {
+    const serviceDate = addDays(fromDate, offset);
+    const loaded = await loadDay2(serviceDate);
+    const dow = dayOfWeekFor(serviceDate, loaded.timeZone);
+    const open = !loaded.holidays.has(serviceDate) && loaded.hours.some((h) => h.dayOfWeek === dow);
+    if (open) anyOpenDay = true;
+    const found = allOnDay(loaded, input.quantityKg, centre.config, now);
+    if (found.length > 0) {
+      day = loaded;
+      candidates = found;
+      break;
+    }
+  }
+  const duration = durationBreakdown(input.quantityKg, centre.config);
+  const slots = day ? candidates.map((candidate) => {
+    const aheadInLane = day.existing.filter(
+      (e) => e.laneNo === candidate.laneNo && e.startAt.getTime() < candidate.startAt.getTime()
+    ).length;
+    return {
+      ...candidateToView(candidate, centre),
+      estimatedQueuePosition: aheadInLane + 1
+    };
+  }) : [];
+  return {
+    centre,
+    crop,
+    slots,
+    available: slots.length > 0,
+    reasonCode: slots.length === 0 ? anyOpenDay ? "ALL_DAYS_FULL" : "CENTRE_CLOSED_ON_DATE" : null,
+    duration,
+    storageCheck: storageCheckFor(centre),
+    now
   };
 }
 function hashRequest(body) {
@@ -3409,6 +3558,43 @@ async function createBooking(input, ctx2) {
     }
   }
   throw lastConflict ?? conflict(ErrorCodes.SLOT_NO_LONGER_AVAILABLE, "Could not secure a window after several attempts");
+}
+function candidateForChosenSlot(centre, day, quantityKg, laneNo, startAt, now) {
+  if (Number.isNaN(startAt.getTime()) || startAt.getTime() < now.getTime()) {
+    throw conflict(ErrorCodes.SLOT_NO_LONGER_AVAILABLE, "Chosen slot is no longer available");
+  }
+  if (!centre.lanes.includes(laneNo)) {
+    throw unprocessable(ErrorCodes.VALIDATION_FAILED, "Unknown lane for this centre");
+  }
+  if (day.holidays.has(day.serviceDate)) {
+    throw conflict(ErrorCodes.SLOT_NO_LONGER_AVAILABLE, "Chosen slot is no longer available");
+  }
+  const { processingMinutes: proc, bufferMinutes, occupancyMinutes: occ } = durationBreakdown(
+    quantityKg,
+    centre.config
+  );
+  const dow = dayOfWeekFor(day.serviceDate, day.timeZone);
+  const occupied = day.existing.filter((e) => e.laneNo === laneNo);
+  const fits = day.hours.filter((h) => h.dayOfWeek === dow).some((h) => {
+    const working = {
+      startAt: zonedToUtc(day.serviceDate, h.opensAt.slice(0, 5), day.timeZone),
+      endAt: zonedToUtc(day.serviceDate, h.closesAt.slice(0, 5), day.timeZone)
+    };
+    return laneFreeAt(working, occupied, startAt, occ);
+  });
+  if (!fits) {
+    throw conflict(ErrorCodes.SLOT_NO_LONGER_AVAILABLE, "Chosen slot is no longer available");
+  }
+  return {
+    laneNo,
+    serviceDate: day.serviceDate,
+    startAt,
+    endAt: new Date(startAt.getTime() + occ * 6e4),
+    processingEndAt: new Date(startAt.getTime() + proc * 6e4),
+    processingMinutes: proc,
+    bufferMinutes,
+    occupancyMinutes: occ
+  };
 }
 async function attemptCreate(input, ctx2, attempt) {
   return withTransaction(async (client) => {
@@ -3438,28 +3624,44 @@ async function attemptCreate(input, ctx2, attempt) {
     const crop = await requireCropAtCentre(input.centreId, input.cropId, fromDate, client);
     await lockDailyCapacity(client, centre.centreId, fromDate);
     const storageCheck = storageCheckFor(centre);
-    const search2 = await findEarliest(
-      fromDate,
-      centre.config.bookingHorizonDays,
-      input.quantityKg,
-      centre.config,
-      now,
-      async (serviceDate) => ({
+    let candidate;
+    if (input.laneNo !== void 0 && input.startAt) {
+      const chosenStart = new Date(input.startAt);
+      const serviceDate = Number.isNaN(chosenStart.getTime()) ? fromDate : localDateOf(chosenStart, centre.timezone);
+      assertWithinHorizon(centre, serviceDate, now);
+      const day = {
         serviceDate,
         timeZone: centre.timezone,
         hours: centre.hours,
         holidays: centre.holidays,
         lanes: centre.lanes,
         existing: await loadDayOccupancy(centre.centreId, serviceDate, client)
-      })
-    );
-    if (!search2.found) {
-      throw unprocessable(ErrorCodes.NO_AVAILABILITY, "No available window within the horizon", {
-        reasonCode: search2.reason,
-        horizonDays: centre.config.bookingHorizonDays
-      });
+      };
+      candidate = candidateForChosenSlot(centre, day, input.quantityKg, input.laneNo, chosenStart, now);
+    } else {
+      const search2 = await findEarliest(
+        fromDate,
+        centre.config.bookingHorizonDays,
+        input.quantityKg,
+        centre.config,
+        now,
+        async (serviceDate) => ({
+          serviceDate,
+          timeZone: centre.timezone,
+          hours: centre.hours,
+          holidays: centre.holidays,
+          lanes: centre.lanes,
+          existing: await loadDayOccupancy(centre.centreId, serviceDate, client)
+        })
+      );
+      if (!search2.found) {
+        throw unprocessable(ErrorCodes.NO_AVAILABILITY, "No available window within the horizon", {
+          reasonCode: search2.reason,
+          horizonDays: centre.config.bookingHorizonDays
+        });
+      }
+      candidate = search2.candidate;
     }
-    const candidate = search2.candidate;
     if (candidate.serviceDate !== fromDate) {
       await lockDailyCapacity(client, centre.centreId, candidate.serviceDate);
     }
@@ -3696,7 +3898,14 @@ var CreateSchema = z5.object({
   centreId: z5.string().uuid("CENTRE_ID_INVALID"),
   cropId: z5.string().uuid("CROP_ID_INVALID"),
   quantityKg: QuantityKgSchema,
-  preferredDate: DateSchema
+  preferredDate: DateSchema,
+  // A slot the farmer picked from the availability list. Both or neither —
+  // half a chosen slot is not a valid preference.
+  laneNo: z5.number().int().positive().optional(),
+  startAt: z5.string().datetime().optional()
+}).refine((v) => v.laneNo === void 0 === (v.startAt === void 0), {
+  message: "laneNo and startAt must be provided together",
+  path: ["startAt"]
 });
 var CancelSchema = z5.object({
   reason: z5.string().trim().max(280).optional()
@@ -3740,7 +3949,7 @@ function buildBookingsRouter() {
     path: `${BASE4}/bookings/availability`,
     auth: { kind: "permission", permission: "slot.query" },
     csrf: true,
-    summary: "Find the earliest bookable window for a crop and quantity."
+    summary: "List bookable windows, with an estimated queue position each, for a crop and quantity."
   });
   router.post(
     "/bookings/availability",
@@ -3751,7 +3960,7 @@ function buildBookingsRouter() {
         { rule: RateLimits.AVAILABILITY_PER_SESSION, subject: req.actor.sessionId }
       ]);
       if (limited) throw await rejectRateLimited2(req, limited);
-      const { centre, crop, result, duration, storageCheck } = await findAvailability({
+      const { centre, crop, slots, available, reasonCode, duration, storageCheck } = await findAvailabilityList({
         centreId: input.centreId,
         cropId: input.cropId,
         quantityKg: input.quantityKg,
@@ -3769,9 +3978,11 @@ function buildBookingsRouter() {
         crop: { name: crop.cropName, season: crop.seasonCode, marketingYear: crop.marketingYear },
         quantityKg: input.quantityKg,
         duration,
-        available: result.found,
-        window: result.found ? candidateToView(result.candidate, centre) : null,
-        reasonCode: result.found ? null : result.reason,
+        available,
+        // The earliest slot, kept for callers still reading the singular shape.
+        window: slots[0] ?? null,
+        slots,
+        reasonCode,
         horizonDays: centre.config.bookingHorizonDays,
         storageCheck
       });
@@ -3806,6 +4017,8 @@ function buildBookingsRouter() {
           cropId: input.cropId,
           quantityKg: input.quantityKg,
           preferredDate: input.preferredDate,
+          laneNo: input.laneNo,
+          startAt: input.startAt,
           idempotencyKey: key.trim(),
           requestHash: hashRequest(input)
         },
@@ -4008,7 +4221,9 @@ async function centreCropStorage(centreId) {
   const res = await query(
     `SELECT c.id AS crop_id, c.canonical_name,
             ccc.storage_capacity_kg::text AS storage_capacity_kg,
-            COALESCE(SUM(pr.accepted_quantity_kg), 0)::text AS occupied_kg
+            COALESCE(SUM(pr.accepted_quantity_kg), 0)::text AS occupied_kg,
+            ccc.officer_reported_available_kg::text AS officer_reported_available_kg,
+            ccc.officer_reported_at::text AS officer_reported_at
        FROM centre_crop_configurations ccc
        JOIN crops c ON c.id = ccc.crop_id
        LEFT JOIN bookings b
@@ -4017,11 +4232,23 @@ async function centreCropStorage(centreId) {
              AND b.status = 'COMPLETED'
        LEFT JOIN procurements pr ON pr.booking_id = b.id
       WHERE ccc.centre_id = $1 AND ccc.is_active
-      GROUP BY c.id, c.canonical_name, ccc.storage_capacity_kg
+      GROUP BY c.id, c.canonical_name, ccc.storage_capacity_kg,
+               ccc.officer_reported_available_kg, ccc.officer_reported_at
       ORDER BY c.canonical_name`,
     [centreId]
   );
   return res.rows;
+}
+async function setOfficerReportedStorage(centreId, cropId, availableKg, userId) {
+  const res = await query(
+    `UPDATE centre_crop_configurations
+        SET officer_reported_available_kg = $3,
+            officer_reported_at = now(),
+            officer_reported_by_user_id = $4
+      WHERE centre_id = $1 AND crop_id = $2 AND is_active`,
+    [centreId, cropId, availableKg, userId]
+  );
+  return (res.rowCount ?? 0) > 0;
 }
 async function createProcurement(client, bookingId, centreId, officerUserId) {
   const res = await client.query(
@@ -4715,6 +4942,12 @@ async function centreStorageSummary(centreId) {
       occupiedKg,
       availableKg,
       filledPercent,
+      officerReportedAvailableKg: num(row.officer_reported_available_kg),
+      officerReportedAt: row.officer_reported_at,
+      // The dashboard's fill-me-in reminder watches this: a crop with a
+      // recorded capacity that the officer has never confirmed a real
+      // available figure for.
+      needsOfficerReport: capacityKg !== null && row.officer_reported_at === null,
       reasonCode: capacityKg === null ? "NO_STORAGE_CAPACITY_CONFIGURED" : null
     };
   });
@@ -4826,6 +5059,48 @@ function buildOfficerRouter() {
     asyncHandler(async (req, res) => {
       const centreId = parse3(z6.string().uuid("CENTRE_ID_INVALID"), req.params.centreId);
       if (!actorMayActOnCentre(req.actor, centreId)) throw notFound("Centre not found");
+      sendData(res, 200, { centreId, crops: await centreStorageSummary(centreId) });
+    })
+  );
+  declareRoute({
+    method: "PUT",
+    path: `${BASE5}/officer/centres/:centreId/storage/:cropId`,
+    auth: { kind: "permission", permission: "storage.report_available" },
+    csrf: true,
+    summary: "Report the currently-available storage for one crop."
+  });
+  router.put(
+    "/officer/centres/:centreId/storage/:cropId",
+    requirePermission("storage.report_available"),
+    asyncHandler(async (req, res) => {
+      const centreId = parse3(z6.string().uuid("CENTRE_ID_INVALID"), req.params.centreId);
+      const cropId = parse3(z6.string().uuid("CROP_ID_INVALID"), req.params.cropId);
+      if (!actorMayActOnCentre(req.actor, centreId)) throw notFound("Centre not found");
+      const { availableKg } = parse3(
+        z6.object({ availableKg: MeasuredKgSchema }),
+        req.body
+      );
+      const updated = await setOfficerReportedStorage(
+        centreId,
+        cropId,
+        availableKg,
+        req.actor.userId
+      );
+      if (!updated) {
+        throw notFound("This centre does not have an active configuration for that crop");
+      }
+      await withTransaction(
+        (client) => writeAudit(client, {
+          action: AuditActions.STORAGE_REPORTED,
+          entityType: "centre_crop_configuration",
+          entityId: `${centreId}:${cropId}`,
+          actorUserId: req.actor.userId,
+          actorRole: "OFFICER",
+          actorIp: req.clientIp ?? null,
+          requestId: req.requestId ?? null,
+          after: { centreId, cropId, availableKg }
+        })
+      );
       sendData(res, 200, { centreId, crops: await centreStorageSummary(centreId) });
     })
   );
@@ -5009,7 +5284,7 @@ function byScheduleThenLaneThenToken(a, b) {
 }
 function projectQueue(members, now, config, isFutureDate = false) {
   const active = members.filter(isInQueue).sort(byScheduleThenLaneThenToken);
-  const laneFreeAt = /* @__PURE__ */ new Map();
+  const laneFreeAt2 = /* @__PURE__ */ new Map();
   const projected = [];
   for (const m of active) {
     const state = queueStateOf(m);
@@ -5023,12 +5298,12 @@ function projectQueue(members, now, config, isFutureDate = false) {
       projectedEndAt = addMinutes(now, remaining);
       etaConfidence = "OBSERVED";
     } else {
-      const laneFree = laneFreeAt.get(m.laneNo) ?? now;
+      const laneFree = laneFreeAt2.get(m.laneNo) ?? now;
       projectedStartAt = laterOf(m.scheduledStartAt, laneFree);
       projectedEndAt = addMinutes(projectedStartAt, m.processingMinutes);
       etaConfidence = isFutureDate ? "SCHEDULED" : "PROJECTED";
     }
-    laneFreeAt.set(m.laneNo, addMinutes(projectedEndAt, config.transitionBufferMinutes));
+    laneFreeAt2.set(m.laneNo, addMinutes(projectedEndAt, config.transitionBufferMinutes));
     projected.push({
       bookingCode: m.bookingCode,
       tokenNumber: m.tokenNumber,

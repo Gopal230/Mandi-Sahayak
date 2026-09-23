@@ -128,6 +128,16 @@ export const StaffRegisterSchema = z
     phone: PhoneSchema,
     districtId: z.string().uuid("DISTRICT_ID_INVALID"),
     centreId: z.string().uuid("CENTRE_ID_INVALID"),
+    /*
+     * A DEMO field, not a verified identity. There is no official employee
+     * registry to check this against yet, so any value is accepted here —
+     * it is carried onto the pending request purely as the applicant's own
+     * stated preference. An administrator can keep it, replace it, or assign
+     * one from scratch at approval (auth.service.ts submitOfficerRegistration
+     * / admin.routes.ts officer creation); nothing about the applicant's
+     * access is decided by what they typed here.
+     */
+    employeeCode: z.string().trim().max(64).optional(),
     cropIds: z
       .array(z.string().uuid("CROP_ID_INVALID"))
       .min(1, "CROP_ID_INVALID"),

@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import api from "../../lib/api";
+import { quintalToKg } from "../../lib/format";
 import { translateOfficerStatus } from "../../lib/officerStatus";
 
 const defaultCropChoices = ["Wheat", "Rice", "Mustard", "Gram"];
@@ -11,8 +13,65 @@ const DashboardPage = ({
   morningSetup,
   onSaveMorningSetup,
   storageSummary = [],
+  centreId,
+  onReloadStorage,
 }) => {
   const { t } = useTranslation();
+  const [reportDrafts, setReportDrafts] = useState({});
+  const [reportSaving, setReportSaving] = useState(null);
+  const [reportError, setReportError] = useState(null);
+
+  const cropsNeedingReport = useMemo(
+    () => storageSummary.filter((crop) => crop.needsOfficerReport),
+    [storageSummary],
+  );
+
+  // Shown once per centre per browser, not once ever — a fresh crop added
+  // later (also needsOfficerReport) should still get its own nudge rather
+  // than being silenced by an old dismissal.
+  const popupStorageKey = centreId ? `storagePopupDismissed:${centreId}` : null;
+  const [popupDismissed, setPopupDismissed] = useState(() => {
+    if (!popupStorageKey) return true;
+    try {
+      return window.sessionStorage.getItem(popupStorageKey) === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  function dismissPopup() {
+    setPopupDismissed(true);
+    if (!popupStorageKey) return;
+    try {
+      window.sessionStorage.setItem(popupStorageKey, "true");
+    } catch {
+      // Storage can be unavailable (private mode); the popup just reappears
+      // next load, which is a harmless fallback, not a failure to handle.
+    }
+  }
+
+  async function handleSaveReport(cropId) {
+    const raw = reportDrafts[cropId];
+    const quintal = Number(raw);
+    if (!Number.isFinite(quintal) || quintal < 0) return;
+
+    setReportSaving(cropId);
+    setReportError(null);
+    try {
+      await api.officerReportStorage(centreId, cropId, quintalToKg(quintal));
+      setReportDrafts((previous) => {
+        const next = { ...previous };
+        delete next[cropId];
+        return next;
+      });
+      await onReloadStorage?.();
+    } catch (error) {
+      setReportError(error);
+    } finally {
+      setReportSaving(null);
+    }
+  }
+
   const [form, setForm] = useState({
     weighbridgeWorking: true,
     slotsOpen: 6,
@@ -346,11 +405,23 @@ const DashboardPage = ({
       </div>
 
       <div className="rounded-[26px] border border-emerald-200 bg-white p-5 shadow-sm shadow-emerald-200/30">
-        <div className="mb-4">
+        <div className="mb-4 flex items-center gap-2.5">
           <h3 className="text-lg font-bold text-black">
             {t("cropWiseStorageSummary")}
           </h3>
+
+          {cropsNeedingReport.length > 0 && (
+            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900">
+              {t("storageReportNeededBadge", { count: cropsNeedingReport.length })}
+            </span>
+          )}
         </div>
+
+        {reportError && (
+          <p className="mb-3 text-xs font-semibold text-red-700">
+            {reportError.message || t("codes.errors.VALIDATION_FAILED")}
+          </p>
+        )}
 
         {storageSummary.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/60 p-4 text-sm text-black">
@@ -365,6 +436,7 @@ const DashboardPage = ({
                   <th className="px-3 py-2 font-bold">{t("totalCapacity")}</th>
                   <th className="px-3 py-2 font-bold">{t("availableSpace")}</th>
                   <th className="px-3 py-2 font-bold">{t("filled")}</th>
+                  <th className="px-3 py-2 font-bold">{t("reportedAvailable")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-emerald-100 bg-white">
@@ -377,6 +449,12 @@ const DashboardPage = ({
                     crop.availableKg === null
                       ? null
                       : Number(crop.availableKg) / 100;
+                  const reportedQuintal =
+                    crop.officerReportedAvailableKg === null
+                      ? null
+                      : Number(crop.officerReportedAvailableKg) / 100;
+                  const draft = reportDrafts[crop.cropId] ?? "";
+                  const isSaving = reportSaving === crop.cropId;
 
                   return (
                     <tr key={crop.cropId}>
@@ -386,7 +464,7 @@ const DashboardPage = ({
                       {capacityQuintal === null ? (
                         <td
                           className="px-3 py-2 text-black"
-                          colSpan={3}
+                          colSpan={4}
                         >
                           {t("noCropStorageConfiguredForCrop")}
                         </td>
@@ -403,6 +481,42 @@ const DashboardPage = ({
                           <td className="px-3 py-2 font-semibold text-black">
                             {crop.filledPercent}%
                           </td>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                inputMode="decimal"
+                                value={draft}
+                                placeholder={
+                                  reportedQuintal !== null
+                                    ? reportedQuintal.toLocaleString("en-IN")
+                                    : t("notYetReported")
+                                }
+                                onChange={(event) =>
+                                  setReportDrafts((previous) => ({
+                                    ...previous,
+                                    [crop.cropId]: event.target.value,
+                                  }))
+                                }
+                                className="w-24 rounded-lg border border-emerald-200 bg-white px-2 py-1.5 text-sm text-black outline-none focus:border-emerald-500"
+                              />
+                              <button
+                                type="button"
+                                disabled={!draft || isSaving}
+                                onClick={() => handleSaveReport(crop.cropId)}
+                                className="rounded-lg bg-green-700 px-2.5 py-1.5 text-xs font-bold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                {isSaving ? t("saving") : t("save")}
+                              </button>
+                              {crop.needsOfficerReport && (
+                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                                  {t("needsUpdate")}
+                                </span>
+                              )}
+                            </div>
+                          </td>
                         </>
                       )}
                     </tr>
@@ -414,6 +528,25 @@ const DashboardPage = ({
         )}
       </div>
 
+      {!popupDismissed && cropsNeedingReport.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-bold text-black">
+              {t("storageReportPopupTitle")}
+            </h3>
+            <p className="mt-2 text-sm leading-5 text-black">
+              {t("storageReportPopupBody", { count: cropsNeedingReport.length })}
+            </p>
+            <button
+              type="button"
+              onClick={dismissPopup}
+              className="mt-4 min-h-11 w-full rounded-xl bg-green-700 px-4 text-sm font-semibold text-white transition hover:bg-green-800"
+            >
+              {t("gotIt")}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

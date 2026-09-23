@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import api from "../../lib/api";
@@ -8,7 +8,6 @@ import useApiResource from "../../hooks/useApiResource";
 import LanguageToggle from "../../components/LanguageToggle";
 import { ErrorState } from "../../components/StateViews";
 import DistrictSearchInput from "../../components/DistrictSearchInput";
-import { getDistrictsGroupedByState } from "../../data/allDistricts.js";
 
 const CONSENT_POLICY_VERSION = "v1";
 
@@ -128,11 +127,6 @@ function Registration() {
       setSubmitting(false);
     }
   }
-
-  const districtGroups = useMemo(
-    () => getDistrictsGroupedByState(districts.data ?? []),
-    [districts.data]
-  );
 
   const inputClasses = (hasError) =>
     `min-h-13 w-full rounded-xl border bg-white px-4 text-sm text-black outline-none transition placeholder:text-black focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 ${
@@ -351,42 +345,8 @@ function Registration() {
                         clearFieldError("villageId");
                       }}
                       disabled={districts.loading}
+                      error={fieldErrors.districtId}
                     />
-
-                    <select
-                      id="districtId"
-                      value={districtId}
-                      // Disabled only while the list is in flight. A failed
-                      // load must stay operable — it is paired with the retry
-                      // below, and disabling on error leaves the farmer with a
-                      // dead control and no way to recover short of a reload.
-                      disabled={districts.loading}
-                      onChange={(event) => {
-                        setDistrictId(event.target.value);
-                        setVillageId("");
-                        clearFieldError("districtId");
-                        clearFieldError("villageId");
-                      }}
-                      className={inputClasses(
-                        fieldErrors.districtId || districts.error
-                      )}
-                    >
-                      <option value="">
-                        {districts.loading
-                          ? t("loading")
-                          : t("selectDistrict")}
-                      </option>
-
-                      {districtGroups.map((group) => (
-                        <optgroup key={group.state} label={group.state}>
-                          {group.districts.map((district) => (
-                            <option key={district.id} value={district.id}>
-                              {district.name}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
 
                     {districts.error && (
                       <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -403,12 +363,6 @@ function Registration() {
                           {t("tryAgain")}
                         </button>
                       </div>
-                    )}
-
-                    {fieldErrors.districtId && (
-                      <p className="mt-1.5 text-xs font-semibold text-red-700">
-                        {fieldErrors.districtId}
-                      </p>
                     )}
                   </div>
 

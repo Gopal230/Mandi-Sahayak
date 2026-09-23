@@ -198,6 +198,64 @@ export function buildOfficerRouter(): Router {
   );
 
   // -------------------------------------------------------------------------
+  // PUT /officer/centres/:centreId/storage/:cropId
+  //
+  // The officer's own periodic confirmation of what is actually free for one
+  // crop, distinct from the computed (capacity minus COMPLETED bookings)
+  // figure above — the app's bookings are not the only thing that moves
+  // grain through a real warehouse. Narrower than admin's storage.configure:
+  // this can only set the reported-available number on a crop the centre
+  // already handles, never capacity itself or which crops are handled.
+  // -------------------------------------------------------------------------
+  declareRoute({
+    method: 'PUT',
+    path: `${BASE}/officer/centres/:centreId/storage/:cropId`,
+    auth: { kind: 'permission', permission: 'storage.report_available' },
+    csrf: true,
+    summary: "Report the currently-available storage for one crop.",
+  });
+  router.put(
+    '/officer/centres/:centreId/storage/:cropId',
+    requirePermission('storage.report_available'),
+    asyncHandler(async (req, res) => {
+      const centreId = parse(z.string().uuid('CENTRE_ID_INVALID'), req.params.centreId);
+      const cropId = parse(z.string().uuid('CROP_ID_INVALID'), req.params.cropId);
+
+      if (!actorMayActOnCentre(req.actor!, centreId)) throw notFound('Centre not found');
+
+      const { availableKg } = parse(
+        z.object({ availableKg: MeasuredKgSchema }),
+        req.body,
+      );
+
+      const updated = await repo.setOfficerReportedStorage(
+        centreId,
+        cropId,
+        availableKg,
+        req.actor!.userId,
+      );
+      if (!updated) {
+        throw notFound('This centre does not have an active configuration for that crop');
+      }
+
+      await withTransaction((client) =>
+        writeAudit(client, {
+          action: AuditActions.STORAGE_REPORTED,
+          entityType: 'centre_crop_configuration',
+          entityId: `${centreId}:${cropId}`,
+          actorUserId: req.actor!.userId,
+          actorRole: 'OFFICER',
+          actorIp: req.clientIp ?? null,
+          requestId: req.requestId ?? null,
+          after: { centreId, cropId, availableKg },
+        }),
+      );
+
+      sendData(res, 200, { centreId, crops: await centreStorageSummary(centreId) });
+    }),
+  );
+
+  // -------------------------------------------------------------------------
   // GET /officer/bookings/search
   //
   // Declared BEFORE /officer/bookings/:bookingCode so "search" is never parsed

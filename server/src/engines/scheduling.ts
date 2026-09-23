@@ -223,6 +223,46 @@ export function earliestOnLane(
   return null;
 }
 
+/**
+ * Every start on ONE lane at or after `notBefore` that fits `duration`
+ * entirely inside a free interval and inside working hours — the same rule
+ * as `earliestOnLane`, but walked to exhaustion within each gap instead of
+ * stopping at the first fit.
+ */
+export function allOnLane(
+  working: Interval,
+  occupied: readonly Interval[],
+  durationMinutes: number,
+  notBefore: Date,
+  granularityMinutes: number,
+): Date[] {
+  const needed = durationMinutes * MIN_MS;
+  const step = Math.max(granularityMinutes, 1) * MIN_MS;
+  const starts: Date[] = [];
+
+  for (const gap of freeIntervals(working, occupied)) {
+    const lowerBound = new Date(Math.max(gap.startAt.getTime(), notBefore.getTime()));
+    let start = snapUp(lowerBound, working.startAt, granularityMinutes);
+    while (start.getTime() + needed <= gap.endAt.getTime()) {
+      starts.push(start);
+      start = new Date(start.getTime() + step);
+    }
+  }
+  return starts;
+}
+
+/** Whether `start` fits `durationMinutes` entirely inside `working`, clear of `occupied`. */
+export function laneFreeAt(
+  working: Interval,
+  occupied: readonly Interval[],
+  start: Date,
+  durationMinutes: number,
+): boolean {
+  const end = new Date(start.getTime() + durationMinutes * MIN_MS);
+  if (start < working.startAt || end > working.endAt) return false;
+  return !occupied.some((o) => o.startAt < end && o.endAt > start);
+}
+
 // ---------------------------------------------------------------------------
 // Day-level search
 // ---------------------------------------------------------------------------
@@ -291,6 +331,63 @@ export function earliestOnDay(
   }
 
   return best;
+}
+
+/**
+ * Every candidate on a single day, across all lanes, sorted by start time
+ * (ties broken by lane number) — the enumerable counterpart to
+ * `earliestOnDay`, for screens that let the farmer choose among several
+ * open windows rather than being handed only the first one.
+ */
+export function allOnDay(
+  day: DayInput,
+  quantityKg: number,
+  cfg: SlotConfig,
+  notBefore: Date,
+): Candidate[] {
+  if (day.holidays.has(day.serviceDate)) return [];
+  if (day.lanes.length === 0) return [];
+
+  const dow = dayOfWeekFor(day.serviceDate, day.timeZone);
+  const todaysHours = day.hours.filter((h) => h.dayOfWeek === dow);
+  if (todaysHours.length === 0) return [];
+
+  const { processingMinutes: proc, bufferMinutes, occupancyMinutes: occ } = durationBreakdown(
+    quantityKg,
+    cfg,
+  );
+
+  const candidates: Candidate[] = [];
+
+  for (const h of todaysHours) {
+    const working: Interval = {
+      startAt: zonedToUtc(day.serviceDate, h.opensAt.slice(0, 5), day.timeZone),
+      endAt: zonedToUtc(day.serviceDate, h.closesAt.slice(0, 5), day.timeZone),
+    };
+    if (working.endAt <= working.startAt) continue;
+
+    for (const laneNo of [...day.lanes].sort((a, b) => a - b)) {
+      const occupied = day.existing.filter((e) => e.laneNo === laneNo);
+      const starts = allOnLane(working, occupied, occ, notBefore, cfg.slotGranularityMinutes);
+      for (const start of starts) {
+        candidates.push({
+          laneNo,
+          serviceDate: day.serviceDate,
+          startAt: start,
+          endAt: new Date(start.getTime() + occ * MIN_MS),
+          processingEndAt: new Date(start.getTime() + proc * MIN_MS),
+          processingMinutes: proc,
+          bufferMinutes,
+          occupancyMinutes: occ,
+        });
+      }
+    }
+  }
+
+  candidates.sort(
+    (a, b) => a.startAt.getTime() - b.startAt.getTime() || a.laneNo - b.laneNo,
+  );
+  return candidates;
 }
 
 export type SearchResult =

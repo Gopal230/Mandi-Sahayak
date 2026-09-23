@@ -16,9 +16,8 @@ import { writeAudit, AuditActions } from '../../core/audit.ts';
 import { QuantityKgSchema } from '../../domain/quantity.ts';
 import {
   cancelBooking,
-  candidateToView,
   createBooking,
-  findAvailability,
+  findAvailabilityList,
   getMyBooking,
   hashRequest,
   listMyBookings,
@@ -38,12 +37,21 @@ const AvailabilitySchema = z.object({
   fromDate: DateSchema,
 });
 
-const CreateSchema = z.object({
-  centreId: z.string().uuid('CENTRE_ID_INVALID'),
-  cropId: z.string().uuid('CROP_ID_INVALID'),
-  quantityKg: QuantityKgSchema,
-  preferredDate: DateSchema,
-});
+const CreateSchema = z
+  .object({
+    centreId: z.string().uuid('CENTRE_ID_INVALID'),
+    cropId: z.string().uuid('CROP_ID_INVALID'),
+    quantityKg: QuantityKgSchema,
+    preferredDate: DateSchema,
+    // A slot the farmer picked from the availability list. Both or neither —
+    // half a chosen slot is not a valid preference.
+    laneNo: z.number().int().positive().optional(),
+    startAt: z.string().datetime().optional(),
+  })
+  .refine((v) => (v.laneNo === undefined) === (v.startAt === undefined), {
+    message: 'laneNo and startAt must be provided together',
+    path: ['startAt'],
+  });
 
 const CancelSchema = z.object({
   reason: z.string().trim().max(280).optional(),
@@ -98,7 +106,7 @@ export function buildBookingsRouter(): Router {
     path: `${BASE}/bookings/availability`,
     auth: { kind: 'permission', permission: 'slot.query' },
     csrf: true,
-    summary: 'Find the earliest bookable window for a crop and quantity.',
+    summary: 'List bookable windows, with an estimated queue position each, for a crop and quantity.',
   });
   router.post(
     '/bookings/availability',
@@ -111,12 +119,13 @@ export function buildBookingsRouter(): Router {
       ]);
       if (limited) throw await rejectRateLimited(req, limited);
 
-      const { centre, crop, result, duration, storageCheck } = await findAvailability({
-        centreId: input.centreId,
-        cropId: input.cropId,
-        quantityKg: input.quantityKg,
-        fromDate: input.fromDate,
-      });
+      const { centre, crop, slots, available, reasonCode, duration, storageCheck } =
+        await findAvailabilityList({
+          centreId: input.centreId,
+          cropId: input.cropId,
+          quantityKg: input.quantityKg,
+          fromDate: input.fromDate,
+        });
 
       sendData(res, 200, {
         centre: {
@@ -130,9 +139,11 @@ export function buildBookingsRouter(): Router {
         crop: { name: crop.cropName, season: crop.seasonCode, marketingYear: crop.marketingYear },
         quantityKg: input.quantityKg,
         duration,
-        available: result.found,
-        window: result.found ? candidateToView(result.candidate, centre) : null,
-        reasonCode: result.found ? null : result.reason,
+        available,
+        // The earliest slot, kept for callers still reading the singular shape.
+        window: slots[0] ?? null,
+        slots,
+        reasonCode,
         horizonDays: centre.config.bookingHorizonDays,
         storageCheck,
       });
@@ -174,6 +185,8 @@ export function buildBookingsRouter(): Router {
           cropId: input.cropId,
           quantityKg: input.quantityKg,
           preferredDate: input.preferredDate,
+          laneNo: input.laneNo,
+          startAt: input.startAt,
           idempotencyKey: key.trim(),
           requestHash: hashRequest(input),
         },

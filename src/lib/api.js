@@ -393,6 +393,17 @@ export const api = {
       { signal },
     ),
 
+  /** The officer's own confirmation of what's actually free right now, per crop. */
+  officerReportStorage: (centreId, cropId, availableKg, signal) =>
+    write(
+      "PUT",
+      `/officer/centres/${encodeURIComponent(centreId)}/storage/${encodeURIComponent(cropId)}`,
+      {
+        body: { availableKg },
+        signal,
+      },
+    ),
+
   /** `date` defaults to today in the CENTRE's timezone, never the browser's. */
   centreBookings: (centreId, { date, status } = {}, signal) =>
     request(
