@@ -669,6 +669,7 @@
   "storageOverview": "Storage overview",
   "cropWiseStorageSummary": "Crop-wise storage summary",
   "msp": "MSP",
+  "totalCapacity": "Total capacity",
   "availableSpace": "Available space",
   "filled": "Filled",
   "reportedAvailable": "Reported available (you)",

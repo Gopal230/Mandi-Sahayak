@@ -669,6 +669,7 @@
   "storageOverview": "भंडारण अवलोकन",
   "cropWiseStorageSummary": "फसल-वार भंडारण सारांश",
   "msp": "एमएसपी",
+  "totalCapacity": "कुल क्षमता",
   "availableSpace": "उपलब्ध स्थान",
   "reportedAvailable": "रिपोर्ट की गई उपलब्धता (आपके द्वारा)",
   "notYetReported": "अभी तक रिपोर्ट नहीं की गई",

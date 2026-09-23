@@ -220,18 +220,23 @@ FROM (VALUES
 
 
 -- -----------------------------------------------------------------------------
--- CONFIGURED: which crops each centre accepts.
--- Crops and seasons come from the OFFICIAL Phase 3 MSP import; only the
--- centre-to-crop assignment is configured.
+-- CONFIGURED: which crops each centre accepts, and how much of each it can
+-- store. Crops and seasons come from the OFFICIAL Phase 3 MSP import; only
+-- the centre-to-crop assignment and the storage figure are configured —
+-- storage_capacity_kg is a DEMONSTRATION figure (500 quintal per crop per
+-- centre), the same way the rest of this file's centres are, not a claim
+-- about any real warehouse's capacity.
 -- effective_from is the demonstration configuration date, NOT a claim about when
 -- a marketing season begins — no source publishes those boundaries.
 -- -----------------------------------------------------------------------------
 INSERT INTO centre_crop_configurations (
     centre_id, crop_id, season_id, marketing_year, is_active,
+    storage_capacity_kg,
     effective_from, effective_to, data_type, configured_by_user_id, configuration_note
 )
 SELECT
     v.centre_id, cr.id, se.id, '2026-27', true,
+    50000,
     DATE '2026-09-01', NULL, 'CONFIGURED',
     (SELECT admin_id FROM _cfg_ctx),
     'Demonstration crop eligibility. effective_from is the configuration date, not a season boundary.'

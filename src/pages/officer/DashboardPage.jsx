@@ -13,10 +13,16 @@ const DashboardPage = ({
   morningSetup,
   onSaveMorningSetup,
   storageSummary = [],
+  cropCatalog = [],
   centreId,
   onReloadStorage,
 }) => {
   const { t } = useTranslation();
+  const mspByCropId = useMemo(() => {
+    const map = new Map();
+    for (const crop of cropCatalog) map.set(crop.id, crop.mspRates ?? []);
+    return map;
+  }, [cropCatalog]);
   const [reportDrafts, setReportDrafts] = useState({});
   const [reportSaving, setReportSaving] = useState(null);
   const [reportError, setReportError] = useState(null);
@@ -433,6 +439,7 @@ const DashboardPage = ({
               <thead className="bg-emerald-50 text-black">
                 <tr>
                   <th className="px-3 py-2 font-bold">{t("crop")}</th>
+                  <th className="px-3 py-2 font-bold">{t("msp")}</th>
                   <th className="px-3 py-2 font-bold">{t("totalCapacity")}</th>
                   <th className="px-3 py-2 font-bold">{t("availableSpace")}</th>
                   <th className="px-3 py-2 font-bold">{t("filled")}</th>
@@ -455,11 +462,30 @@ const DashboardPage = ({
                       : Number(crop.officerReportedAvailableKg) / 100;
                   const draft = reportDrafts[crop.cropId] ?? "";
                   const isSaving = reportSaving === crop.cropId;
+                  const mspRates = mspByCropId.get(crop.cropId) ?? [];
 
                   return (
                     <tr key={crop.cropId}>
                       <td className="px-3 py-2 font-semibold text-black">
                         {crop.canonicalName}
+                      </td>
+                      <td className="px-3 py-2 text-black">
+                        {mspRates.length === 0 ? (
+                          <span className="text-xs">{t("notAvailableShort")}</span>
+                        ) : (
+                          <div className="space-y-0.5">
+                            {mspRates.map((rate) => (
+                              <div key={rate.grade ?? "single"} className="text-xs">
+                                {rate.grade && (
+                                  <span className="text-black/70">{rate.grade}: </span>
+                                )}
+                                <span className="font-semibold">
+                                  ₹{rate.ratePerQuintal.toLocaleString("en-IN")}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       {capacityQuintal === null ? (
                         <td

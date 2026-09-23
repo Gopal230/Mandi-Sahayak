@@ -80,6 +80,11 @@ function OfficerPortal() {
     { enabled: Boolean(centre.centreId) },
   );
 
+  // MSP, straight from the official import — joined onto the storage table
+  // by cropId client-side rather than duplicated into the storage endpoint,
+  // since /reference/crops is already the one source for it.
+  const cropCatalog = useApiResource((signal) => api.crops(signal), []);
+
   async function handleSignOut() {
     await signOut();
     navigate("/staff-login", { replace: true });
@@ -203,6 +208,7 @@ function OfficerPortal() {
                     farmers={farmers}
                     morningSetup={morningSetup}
                     storageSummary={storageSummary.data?.crops ?? []}
+                    cropCatalog={cropCatalog.data ?? []}
                     onSaveMorningSetup={setMorningSetup}
                     centreId={centre.centreId}
                     onReloadStorage={storageSummary.reload}
