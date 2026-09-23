@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import api from "../lib/api";
 import useApiResource from "./useApiResource";
@@ -88,12 +88,15 @@ export function useOfficerQueue() {
     .map((row) => `${row.bookingCode}:${row.status}`)
     .join(",");
 
-  const detailKeyRef = useRef(null);
+  // Bumped after every successful mutation so the effect below refetches
+  // details even when `detailKey` itself hasn't changed — a payment moving
+  // PENDING -> INITIATED, for instance, doesn't touch the booking's row
+  // status, so the string `detailKey` is built from stays identical even
+  // though `payment.status` on the server did change.
+  const [detailNonce, setDetailNonce] = useState(0);
 
   useEffect(() => {
     if (!detailKey) return undefined;
-    if (detailKeyRef.current === detailKey) return undefined;
-    detailKeyRef.current = detailKey;
 
     let cancelled = false;
     const codes = detailKey.split(",").map((entry) => entry.split(":")[0]);
@@ -113,7 +116,7 @@ export function useOfficerQueue() {
     return () => {
       cancelled = true;
     };
-  }, [detailKey]);
+  }, [detailKey, detailNonce]);
 
   const locale = "en";
 
@@ -219,7 +222,7 @@ export function useOfficerQueue() {
     async (call, successMessage) => {
       try {
         const result = await call();
-        detailKeyRef.current = null;
+        setDetailNonce((n) => n + 1);
         bookings.reload();
         if (successMessage) flash(successMessage);
         return result;
@@ -277,72 +280,101 @@ export function useOfficerQueue() {
    * is actually due. The screen shows one form; the lifecycle decides what the
    * form's contents mean right now.
    */
+  // Bookings currently mid-save. A second tap while the first `run()` is
+  // still in flight used to re-enter this function against the same stale
+  // `farmer` snapshot, sometimes posting to the wrong endpoint or racing
+  // the first call's `bookings.reload()` — which is how a save could
+  // silently be dropped ("records sometimes, sometimes not").
+  const [savingBookings, setSavingBookings] = useState(() => new Set());
+
   const saveFarmerReport = useCallback(
     async (bookingCode, patch = {}) => {
+      if (savingBookings.has(bookingCode)) return null;
+
       const farmer = farmers.find((entry) => entry.id === bookingCode);
       if (!farmer) return null;
 
-      const gross = patch.grossWeight ?? farmer.grossWeight;
-      const accepted = patch.actualWeight ?? farmer.actualWeight;
-      const rejected = patch.rejectedWeight ?? farmer.quality?.brokenGrain;
-      const grade = patch.grade ?? farmer.quality?.foreignMatter;
-      const moisture = patch.moisture ?? farmer.quality?.moisture;
-      const reason = patch.rejectionReason ?? farmer.rejectionReason;
+      setSavingBookings((previous) => new Set(previous).add(bookingCode));
 
-      // A booking still at the gate is opened on the weighbridge first, so
-      // one press of Save does what the officer means by it.
-      if (farmer.apiStatus === "ARRIVED") {
-        const opened = await run(
-          () => api.officerStartWeighing(bookingCode),
-          null,
-        );
-        if (!opened) return null;
-      }
+      try {
+        const gross = patch.grossWeight ?? farmer.grossWeight;
+        const accepted = patch.actualWeight ?? farmer.actualWeight;
+        const rejected = patch.rejectedWeight ?? farmer.quality?.brokenGrain;
+        const grade = patch.grade ?? farmer.quality?.foreignMatter;
+        const moisture = patch.moisture ?? farmer.quality?.moisture;
+        const reason = patch.rejectionReason ?? farmer.rejectionReason;
 
-      if (farmer.apiStatus === "WEIGHING" || farmer.apiStatus === "ARRIVED") {
-        const result = await run(
-          () => api.officerRecordWeight(bookingCode, quintalToKg(gross)),
-          { key: "grossWeightRecorded" },
-        );
-        if (result) clearDraft(bookingCode);
-        return result;
-      }
-
-      if (farmer.apiStatus === "QUALITY_CHECK") {
-        const rejectedKg = quintalToKg(rejected || 0) ?? 0;
-
-        const result = await run(
-          () =>
-            api.officerRecordQuality(bookingCode, {
-              acceptedQuantityKg: quintalToKg(accepted),
-              rejectedQuantityKg: rejectedKg,
-              ...(grade ? { grade: String(grade).trim() } : {}),
-              ...(moisture ? { moisturePercent: Number(moisture) } : {}),
-              ...(rejectedKg > 0
-                ? { rejectionReason: String(reason || "").trim() }
-                : {}),
-            }),
-          { key: "qualityRecorded" },
-        );
-        if (result) clearDraft(bookingCode);
-        return result;
-      }
-
-      if (farmer.apiStatus === "PROCUREMENT_RECORDED") {
-        const result = await run(() => api.officerComplete(bookingCode), {
-          key: "procurementCompletedAndPriced",
-        });
-        if (result) {
-          clearDraft(bookingCode);
-          setSelectedReportFarmerId(bookingCode);
+        // A booking still at the gate is opened on the weighbridge first, so
+        // one press of Save does what the officer means by it. The status
+        // used from here on is the server's answer to that call, not the
+        // pre-await snapshot, since `farmer.apiStatus` may already be stale.
+        let currentStatus = farmer.apiStatus;
+        if (currentStatus === "ARRIVED") {
+          const opened = await run(
+            () => api.officerStartWeighing(bookingCode),
+            null,
+          );
+          if (!opened) return null;
+          currentStatus = opened.status ?? "WEIGHING";
         }
-        return result;
-      }
 
-      flash({ key: "nothingLeftToRecord" }, "danger");
-      return null;
+        if (currentStatus === "WEIGHING") {
+          const result = await run(
+            () => api.officerRecordWeight(bookingCode, quintalToKg(gross)),
+            { key: "grossWeightRecorded" },
+          );
+          if (!result) return null;
+          clearDraft(bookingCode);
+          // The screen now collects quality params alongside the weight
+          // fields instead of as a separate step, so one Save carries both
+          // straight through to QUALITY_CHECK rather than stopping here and
+          // waiting for a second tap.
+          currentStatus = result.status ?? "QUALITY_CHECK";
+          if (currentStatus !== "QUALITY_CHECK") return result;
+        }
+
+        if (currentStatus === "QUALITY_CHECK") {
+          const rejectedKg = quintalToKg(rejected || 0) ?? 0;
+
+          const result = await run(
+            () =>
+              api.officerRecordQuality(bookingCode, {
+                acceptedQuantityKg: quintalToKg(accepted),
+                rejectedQuantityKg: rejectedKg,
+                ...(grade ? { grade: String(grade).trim() } : {}),
+                ...(moisture ? { moisturePercent: Number(moisture) } : {}),
+                ...(rejectedKg > 0
+                  ? { rejectionReason: String(reason || "").trim() }
+                  : {}),
+              }),
+            { key: "qualityRecorded" },
+          );
+          if (result) clearDraft(bookingCode);
+          return result;
+        }
+
+        if (currentStatus === "PROCUREMENT_RECORDED") {
+          const result = await run(() => api.officerComplete(bookingCode), {
+            key: "procurementCompletedAndPriced",
+          });
+          if (result) {
+            clearDraft(bookingCode);
+            setSelectedReportFarmerId(bookingCode);
+          }
+          return result;
+        }
+
+        flash({ key: "nothingLeftToRecord" }, "danger");
+        return null;
+      } finally {
+        setSavingBookings((previous) => {
+          const next = new Set(previous);
+          next.delete(bookingCode);
+          return next;
+        });
+      }
     },
-    [farmers, run, clearDraft, flash],
+    [farmers, run, clearDraft, flash, savingBookings],
   );
 
   /** The queue's "Clear" finishes whatever step the booking is on. */
@@ -416,6 +448,7 @@ export function useOfficerQueue() {
     markFarmerArrived,
     saveFarmerReport,
     clearFarmer,
+    savingBookings,
   };
 }
 

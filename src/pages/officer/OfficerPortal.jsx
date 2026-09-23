@@ -61,6 +61,7 @@ function OfficerPortal() {
     error,
     reload,
     saveFarmerReport,
+    savingBookings,
     handleDateChange,
     handlePaymentStatusChange,
     updateFarmer,
@@ -228,6 +229,7 @@ function OfficerPortal() {
                     farmers={farmers}
                     onUpdateFarmer={updateFarmer}
                     onSaveReport={saveFarmerReport}
+                    savingBookings={savingBookings}
                   />
                 }
               />

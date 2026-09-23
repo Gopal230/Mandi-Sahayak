@@ -95,7 +95,12 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
   );
 }
 
-const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
+const WeighmentPage = ({
+  farmers = [],
+  onUpdateFarmer,
+  onSaveReport,
+  savingBookings,
+}) => {
   const { t } = useTranslation();
   const [selectedFarmerId, setSelectedFarmerId] = useState(null);
 
@@ -148,7 +153,11 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
   const variance = declared > 0 ? netWeight - declared : 0;
   const isAlert = Math.abs(variance) > 50;
 
-  const isQualityStage = selectedFarmer?.apiStatus === "QUALITY_CHECK";
+  // Both groups of fields are shown together now — quality params no longer
+  // wait for a separate QUALITY_CHECK step before they're even visible.
+  const isSaving = Boolean(
+    selectedFarmer && savingBookings?.has(selectedFarmer.id),
+  );
 
   const updateField = (field, value) => {
     if (!selectedFarmer) return;
@@ -156,24 +165,18 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
   };
 
   const handleSave = async () => {
-    if (!selectedFarmer) return;
+    if (!selectedFarmer || isSaving) return;
 
-    if (isQualityStage) {
-      const { accepted, rejected, moisture, rejectionReason } = qualityValues;
-
-      await onSaveReport?.(selectedFarmer.id, {
-        actualWeight: accepted || String(netWeight || 0),
-        rejectedWeight: rejected || "0",
-        moisture,
-        rejectionReason,
-      });
-      return;
-    }
+    const { accepted, rejected, moisture, rejectionReason } = qualityValues;
 
     await onSaveReport?.(selectedFarmer.id, {
       grossWeight: selectedFarmer.grossWeight ?? "",
       lateMinutes: selectedFarmer.lateMinutes ?? "",
       paymentStatus: "Pending",
+      actualWeight: accepted || String(netWeight || 0),
+      rejectedWeight: rejected || "0",
+      moisture,
+      rejectionReason,
     });
   };
 
@@ -256,9 +259,7 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
             </h3>
           </div>
           <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-black">
-            {isQualityStage
-              ? t("qualityCheckRequired")
-              : selectedFarmer.token}
+            {selectedFarmer.token}
           </span>
         </div>
 
@@ -268,11 +269,10 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
             <input
               type="number"
               value={selectedFarmer.grossWeight ?? ""}
-              disabled={isQualityStage}
               onChange={(event) =>
                 updateField("grossWeight", event.target.value)
               }
-              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none disabled:bg-slate-100 disabled:text-black/60"
+              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
             />
           </label>
 
@@ -281,11 +281,10 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
             <input
               type="number"
               value={selectedFarmer.tareWeight ?? ""}
-              disabled={isQualityStage}
               onChange={(event) =>
                 updateField("tareWeight", event.target.value)
               }
-              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none disabled:bg-slate-100 disabled:text-black/60"
+              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
             />
           </label>
 
@@ -294,9 +293,8 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
             <input
               type="number"
               value={selectedFarmer.bagWeight ?? ""}
-              disabled={isQualityStage}
               onChange={(event) => updateField("bagWeight", event.target.value)}
-              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none disabled:bg-slate-100 disabled:text-black/60"
+              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
             />
           </label>
 
@@ -304,24 +302,21 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
             {t("weighbridgeSlipNo")}
             <input
               value={selectedFarmer.slipNumber ?? ""}
-              disabled={isQualityStage}
               onChange={(event) =>
                 updateField("slipNumber", event.target.value)
               }
-              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none disabled:bg-slate-100 disabled:text-black/60"
+              className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
             />
           </label>
         </div>
 
-        {isQualityStage && (
-          <QualityCheckFields
-            key={`${selectedFarmer.id}:${selectedFarmer.apiStatus}`}
-            farmer={selectedFarmer}
-            netWeight={netWeight}
-            onValuesChange={setQualityValues}
-            t={t}
-          />
-        )}
+        <QualityCheckFields
+          key={selectedFarmer.id}
+          farmer={selectedFarmer}
+          netWeight={netWeight}
+          onValuesChange={setQualityValues}
+          t={t}
+        />
 
         <div className="mt-6 rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -352,11 +347,10 @@ const WeighmentPage = ({ farmers = [], onUpdateFarmer, onSaveReport }) => {
         <button
           type="button"
           onClick={handleSave}
-          className="rounded-full bg-green-700 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 hover:bg-green-800"
+          disabled={isSaving}
+          className="rounded-full bg-green-700 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isQualityStage
-            ? `✅ ${t("saveQualityAndWeight")}`
-            : `⚖️ ${t("saveGrossWeight")}`}
+          {isSaving ? `⏳ ${t("saving")}` : `✅ ${t("saveQualityAndWeight")}`}
         </button>
       </div>
 
