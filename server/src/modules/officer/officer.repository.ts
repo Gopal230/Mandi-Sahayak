@@ -138,17 +138,19 @@ export async function lockBooking(
   client: PoolClient,
   bookingCode: string,
   scope: CentreScope,
-): Promise<{ id: string; centre_id: string; status: string } | null> {
+): Promise<{ id: string; centre_id: string; crop_id: string; status: string } | null> {
   if (scope !== null && scope.length === 0) return null;
   const res = await client.query(
-    `SELECT id, centre_id, status
+    `SELECT id, centre_id, crop_id, status
        FROM bookings
       WHERE booking_code = $1
         AND ($2::uuid[] IS NULL OR centre_id = ANY($2::uuid[]))
       FOR UPDATE`,
     [bookingCode, scope as string[] | null],
   );
-  return (res.rows[0] as { id: string; centre_id: string; status: string }) ?? null;
+  return (
+    (res.rows[0] as { id: string; centre_id: string; crop_id: string; status: string }) ?? null
+  );
 }
 
 /** Moves the booking. The BEFORE UPDATE trigger refuses any illegal pair. */
@@ -356,27 +358,64 @@ export async function centreCropStorage(
 }
 
 /**
- * Records the officer's own confirmation of how much space is actually free
- * for one crop right now — separate from the COMPLETED-bookings figure,
- * which only knows what this app itself has procured. Scoped to
- * `centre_id = $1 AND crop_id = $2 AND is_active` so an officer cannot
- * report against a crop their centre does not (or no longer) handle.
+ * The officer's own correction to one crop's storage figures — total
+ * capacity, or the available figure the COMPLETED-bookings computation
+ * doesn't know about (grain that left or arrived outside this app). Either
+ * or both may be supplied; only the columns actually passed are touched.
+ * Scoped to `centre_id = $1 AND crop_id = $2 AND is_active` so an officer
+ * cannot edit a crop their centre does not (or no longer) handle.
  */
-export async function setOfficerReportedStorage(
+export async function setCropStorageOverrides(
   centreId: string,
   cropId: string,
-  availableKg: number,
+  values: { capacityKg?: number; availableKg?: number },
   userId: string,
 ): Promise<boolean> {
+  const sets: string[] = [];
+  const params: unknown[] = [centreId, cropId];
+
+  if (values.capacityKg !== undefined) {
+    params.push(values.capacityKg);
+    sets.push(`storage_capacity_kg = $${params.length}`);
+  }
+  if (values.availableKg !== undefined) {
+    params.push(values.availableKg);
+    sets.push(`officer_reported_available_kg = $${params.length}`);
+    sets.push('officer_reported_at = now()');
+    params.push(userId);
+    sets.push(`officer_reported_by_user_id = $${params.length}`);
+  }
+  if (sets.length === 0) return false;
+
   const res = await query(
     `UPDATE centre_crop_configurations
-        SET officer_reported_available_kg = $3,
-            officer_reported_at = now(),
-            officer_reported_by_user_id = $4
+        SET ${sets.join(', ')}
       WHERE centre_id = $1 AND crop_id = $2 AND is_active`,
-    [centreId, cropId, availableKg, userId],
+    params,
   );
   return (res.rowCount ?? 0) > 0;
+}
+
+/**
+ * A booking completing is exactly the event the COMPLETED-bookings
+ * computation reacts to, so a standing manual correction is no longer
+ * necessarily accurate the moment that happens — the auto-computed figure
+ * takes back over rather than silently going stale next to a number that
+ * has moved on without it.
+ */
+export async function clearReportedAvailable(
+  client: PoolClient,
+  centreId: string,
+  cropId: string,
+): Promise<void> {
+  await client.query(
+    `UPDATE centre_crop_configurations
+        SET officer_reported_available_kg = NULL,
+            officer_reported_at = NULL,
+            officer_reported_by_user_id = NULL
+      WHERE centre_id = $1 AND crop_id = $2 AND is_active`,
+    [centreId, cropId],
+  );
 }
 
 // ---------------------------------------------------------------------------

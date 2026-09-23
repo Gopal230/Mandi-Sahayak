@@ -23,58 +23,55 @@ const DashboardPage = ({
     for (const crop of cropCatalog) map.set(crop.id, crop.mspRates ?? []);
     return map;
   }, [cropCatalog]);
-  const [reportDrafts, setReportDrafts] = useState({});
-  const [reportSaving, setReportSaving] = useState(null);
-  const [reportError, setReportError] = useState(null);
+  // Total capacity / available space are edited together, in place, behind
+  // one pencil toggle on the section heading — no separate column for a
+  // "reported" number sitting next to the one it corrects.
+  const [storageEditing, setStorageEditing] = useState(false);
+  const [storageDrafts, setStorageDrafts] = useState({});
+  const [storageSaving, setStorageSaving] = useState(null);
+  const [storageError, setStorageError] = useState(null);
 
-  const cropsNeedingReport = useMemo(
-    () => storageSummary.filter((crop) => crop.needsOfficerReport),
-    [storageSummary],
-  );
-
-  // Shown once per centre per browser, not once ever — a fresh crop added
-  // later (also needsOfficerReport) should still get its own nudge rather
-  // than being silenced by an old dismissal.
-  const popupStorageKey = centreId ? `storagePopupDismissed:${centreId}` : null;
-  const [popupDismissed, setPopupDismissed] = useState(() => {
-    if (!popupStorageKey) return true;
-    try {
-      return window.sessionStorage.getItem(popupStorageKey) === "true";
-    } catch {
-      return false;
-    }
-  });
-
-  function dismissPopup() {
-    setPopupDismissed(true);
-    if (!popupStorageKey) return;
-    try {
-      window.sessionStorage.setItem(popupStorageKey, "true");
-    } catch {
-      // Storage can be unavailable (private mode); the popup just reappears
-      // next load, which is a harmless fallback, not a failure to handle.
-    }
+  function draftFor(cropId, field, fallback) {
+    return storageDrafts[cropId]?.[field] ?? fallback;
   }
 
-  async function handleSaveReport(cropId) {
-    const raw = reportDrafts[cropId];
-    const quintal = Number(raw);
-    if (!Number.isFinite(quintal) || quintal < 0) return;
+  function setDraft(cropId, field, value) {
+    setStorageDrafts((previous) => ({
+      ...previous,
+      [cropId]: { ...previous[cropId], [field]: value },
+    }));
+  }
 
-    setReportSaving(cropId);
-    setReportError(null);
+  async function handleSaveStorage(cropId) {
+    const draft = storageDrafts[cropId] ?? {};
+    const values = {};
+
+    if (draft.capacity !== undefined && draft.capacity !== "") {
+      const quintal = Number(draft.capacity);
+      if (!Number.isFinite(quintal) || quintal < 0) return;
+      values.capacityKg = quintalToKg(quintal);
+    }
+    if (draft.available !== undefined && draft.available !== "") {
+      const quintal = Number(draft.available);
+      if (!Number.isFinite(quintal) || quintal < 0) return;
+      values.availableKg = quintalToKg(quintal);
+    }
+    if (Object.keys(values).length === 0) return;
+
+    setStorageSaving(cropId);
+    setStorageError(null);
     try {
-      await api.officerReportStorage(centreId, cropId, quintalToKg(quintal));
-      setReportDrafts((previous) => {
+      await api.officerUpdateStorage(centreId, cropId, values);
+      setStorageDrafts((previous) => {
         const next = { ...previous };
         delete next[cropId];
         return next;
       });
       await onReloadStorage?.();
     } catch (error) {
-      setReportError(error);
+      setStorageError(error);
     } finally {
-      setReportSaving(null);
+      setStorageSaving(null);
     }
   }
 
@@ -411,21 +408,33 @@ const DashboardPage = ({
       </div>
 
       <div className="rounded-[26px] border border-emerald-200 bg-white p-5 shadow-sm shadow-emerald-200/30">
-        <div className="mb-4 flex items-center gap-2.5">
+        <div className="mb-4 flex items-center justify-between gap-2.5">
           <h3 className="text-lg font-bold text-black">
             {t("cropWiseStorageSummary")}
           </h3>
 
-          {cropsNeedingReport.length > 0 && (
-            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900">
-              {t("storageReportNeededBadge", { count: cropsNeedingReport.length })}
-            </span>
-          )}
+          <button
+            type="button"
+            onClick={() => {
+              setStorageEditing((previous) => !previous);
+              setStorageDrafts({});
+              setStorageError(null);
+            }}
+            title={t("editStorageFigures")}
+            aria-label={t("editStorageFigures")}
+            className={`flex h-8 w-8 items-center justify-center rounded-full border text-sm transition ${
+              storageEditing
+                ? "border-green-700 bg-green-700 text-white"
+                : "border-emerald-200 bg-emerald-50 text-black hover:border-green-600"
+            }`}
+          >
+            ✏️
+          </button>
         </div>
 
-        {reportError && (
+        {storageError && (
           <p className="mb-3 text-xs font-semibold text-red-700">
-            {reportError.message || t("codes.errors.VALIDATION_FAILED")}
+            {storageError.message || t("codes.errors.VALIDATION_FAILED")}
           </p>
         )}
 
@@ -443,7 +452,7 @@ const DashboardPage = ({
                   <th className="px-3 py-2 font-bold">{t("totalCapacity")}</th>
                   <th className="px-3 py-2 font-bold">{t("availableSpace")}</th>
                   <th className="px-3 py-2 font-bold">{t("filled")}</th>
-                  <th className="px-3 py-2 font-bold">{t("reportedAvailable")}</th>
+                  {storageEditing && <th className="px-3 py-2 font-bold" />}
                 </tr>
               </thead>
               <tbody className="divide-y divide-emerald-100 bg-white">
@@ -456,13 +465,9 @@ const DashboardPage = ({
                     crop.availableKg === null
                       ? null
                       : Number(crop.availableKg) / 100;
-                  const reportedQuintal =
-                    crop.officerReportedAvailableKg === null
-                      ? null
-                      : Number(crop.officerReportedAvailableKg) / 100;
-                  const draft = reportDrafts[crop.cropId] ?? "";
-                  const isSaving = reportSaving === crop.cropId;
+                  const isSaving = storageSaving === crop.cropId;
                   const mspRates = mspByCropId.get(crop.cropId) ?? [];
+                  const hasDraft = Boolean(storageDrafts[crop.cropId]);
 
                   return (
                     <tr key={crop.cropId}>
@@ -487,61 +492,78 @@ const DashboardPage = ({
                           </div>
                         )}
                       </td>
-                      {capacityQuintal === null ? (
-                        <td
-                          className="px-3 py-2 text-black"
-                          colSpan={4}
-                        >
+
+                      {storageEditing ? (
+                        <>
+                          <td className="px-3 py-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              inputMode="decimal"
+                              value={draftFor(crop.cropId, "capacity", "")}
+                              placeholder={
+                                capacityQuintal !== null
+                                  ? capacityQuintal.toLocaleString("en-IN")
+                                  : t("notRecordedShort")
+                              }
+                              onChange={(event) =>
+                                setDraft(crop.cropId, "capacity", event.target.value)
+                              }
+                              className="w-24 rounded-lg border border-emerald-200 bg-white px-2 py-1.5 text-sm text-black outline-none focus:border-emerald-500"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              inputMode="decimal"
+                              value={draftFor(crop.cropId, "available", "")}
+                              placeholder={
+                                availableQuintal !== null
+                                  ? availableQuintal.toLocaleString("en-IN")
+                                  : t("notRecordedShort")
+                              }
+                              onChange={(event) =>
+                                setDraft(crop.cropId, "available", event.target.value)
+                              }
+                              className="w-24 rounded-lg border border-emerald-200 bg-white px-2 py-1.5 text-sm text-black outline-none focus:border-emerald-500"
+                            />
+                          </td>
+                          <td className="px-3 py-2 font-semibold text-black">
+                            {crop.filledPercent === null ? "—" : `${crop.filledPercent}%`}
+                          </td>
+                          <td className="px-3 py-2">
+                            <button
+                              type="button"
+                              disabled={!hasDraft || isSaving}
+                              onClick={() => handleSaveStorage(crop.cropId)}
+                              className="rounded-lg bg-green-700 px-2.5 py-1.5 text-xs font-bold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              {isSaving ? t("saving") : t("save")}
+                            </button>
+                          </td>
+                        </>
+                      ) : capacityQuintal === null ? (
+                        <td className="px-3 py-2 text-black" colSpan={3}>
                           {t("noCropStorageConfiguredForCrop")}
                         </td>
                       ) : (
                         <>
                           <td className="px-3 py-2 text-black">
-                            {capacityQuintal.toLocaleString("en-IN")}{" "}
-                            {t("quintal")}
+                            {capacityQuintal.toLocaleString("en-IN")} {t("quintal")}
                           </td>
                           <td className="px-3 py-2 font-semibold text-black">
-                            {availableQuintal.toLocaleString("en-IN")}{" "}
-                            {t("quintal")}
+                            {availableQuintal.toLocaleString("en-IN")} {t("quintal")}
+                            {crop.isManuallyReported && (
+                              <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-900">
+                                {t("manuallySet")}
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2 font-semibold text-black">
                             {crop.filledPercent}%
-                          </td>
-                          <td className="px-3 py-2">
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                min="0"
-                                step="any"
-                                inputMode="decimal"
-                                value={draft}
-                                placeholder={
-                                  reportedQuintal !== null
-                                    ? reportedQuintal.toLocaleString("en-IN")
-                                    : t("notYetReported")
-                                }
-                                onChange={(event) =>
-                                  setReportDrafts((previous) => ({
-                                    ...previous,
-                                    [crop.cropId]: event.target.value,
-                                  }))
-                                }
-                                className="w-24 rounded-lg border border-emerald-200 bg-white px-2 py-1.5 text-sm text-black outline-none focus:border-emerald-500"
-                              />
-                              <button
-                                type="button"
-                                disabled={!draft || isSaving}
-                                onClick={() => handleSaveReport(crop.cropId)}
-                                className="rounded-lg bg-green-700 px-2.5 py-1.5 text-xs font-bold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-40"
-                              >
-                                {isSaving ? t("saving") : t("save")}
-                              </button>
-                              {crop.needsOfficerReport && (
-                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">
-                                  {t("needsUpdate")}
-                                </span>
-                              )}
-                            </div>
                           </td>
                         </>
                       )}
@@ -553,26 +575,6 @@ const DashboardPage = ({
           </div>
         )}
       </div>
-
-      {!popupDismissed && cropsNeedingReport.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-            <h3 className="text-lg font-bold text-black">
-              {t("storageReportPopupTitle")}
-            </h3>
-            <p className="mt-2 text-sm leading-5 text-black">
-              {t("storageReportPopupBody", { count: cropsNeedingReport.length })}
-            </p>
-            <button
-              type="button"
-              onClick={dismissPopup}
-              className="mt-4 min-h-11 w-full rounded-xl bg-green-700 px-4 text-sm font-semibold text-white transition hover:bg-green-800"
-            >
-              {t("gotIt")}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

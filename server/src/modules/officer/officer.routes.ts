@@ -200,19 +200,20 @@ export function buildOfficerRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT /officer/centres/:centreId/storage/:cropId
   //
-  // The officer's own periodic confirmation of what is actually free for one
-  // crop, distinct from the computed (capacity minus COMPLETED bookings)
-  // figure above — the app's bookings are not the only thing that moves
-  // grain through a real warehouse. Narrower than admin's storage.configure:
-  // this can only set the reported-available number on a crop the centre
-  // already handles, never capacity itself or which crops are handled.
+  // The officer's own correction to one crop's storage figures — total
+  // capacity, or the currently-available figure the computed (capacity
+  // minus COMPLETED bookings) number can't know about, since the app's
+  // bookings are not the only thing that moves grain through a real
+  // warehouse. Either or both may be sent. Narrower than admin's
+  // storage.configure: this can only edit numbers on a crop the centre
+  // already handles, never which crops are handled or add a facility.
   // -------------------------------------------------------------------------
   declareRoute({
     method: 'PUT',
     path: `${BASE}/officer/centres/:centreId/storage/:cropId`,
     auth: { kind: 'permission', permission: 'storage.report_available' },
     csrf: true,
-    summary: "Report the currently-available storage for one crop.",
+    summary: "Edit the storage capacity and/or currently-available figure for one crop.",
   });
   router.put(
     '/officer/centres/:centreId/storage/:cropId',
@@ -223,15 +224,19 @@ export function buildOfficerRouter(): Router {
 
       if (!actorMayActOnCentre(req.actor!, centreId)) throw notFound('Centre not found');
 
-      const { availableKg } = parse(
-        z.object({ availableKg: MeasuredKgSchema }),
+      const values = parse(
+        z
+          .object({ capacityKg: MeasuredKgSchema.optional(), availableKg: MeasuredKgSchema.optional() })
+          .refine((v) => v.capacityKg !== undefined || v.availableKg !== undefined, {
+            message: 'At least one of capacityKg or availableKg is required',
+          }),
         req.body,
       );
 
-      const updated = await repo.setOfficerReportedStorage(
+      const updated = await repo.setCropStorageOverrides(
         centreId,
         cropId,
-        availableKg,
+        values,
         req.actor!.userId,
       );
       if (!updated) {
@@ -247,7 +252,7 @@ export function buildOfficerRouter(): Router {
           actorRole: 'OFFICER',
           actorIp: req.clientIp ?? null,
           requestId: req.requestId ?? null,
-          after: { centreId, cropId, availableKg },
+          after: { centreId, cropId, ...values },
         }),
       );
 

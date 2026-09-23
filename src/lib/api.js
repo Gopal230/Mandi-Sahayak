@@ -393,13 +393,13 @@ export const api = {
       { signal },
     ),
 
-  /** The officer's own confirmation of what's actually free right now, per crop. */
-  officerReportStorage: (centreId, cropId, availableKg, signal) =>
+  /** The officer's own correction to one crop's capacity and/or available figure. */
+  officerUpdateStorage: (centreId, cropId, values, signal) =>
     write(
       "PUT",
       `/officer/centres/${encodeURIComponent(centreId)}/storage/${encodeURIComponent(cropId)}`,
       {
-        body: { availableKg },
+        body: values,
         signal,
       },
     ),

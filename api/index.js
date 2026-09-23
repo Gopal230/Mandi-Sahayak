@@ -4136,7 +4136,7 @@ async function searchInCentres(scope, by) {
 async function lockBooking(client, bookingCode, scope) {
   if (scope !== null && scope.length === 0) return null;
   const res = await client.query(
-    `SELECT id, centre_id, status
+    `SELECT id, centre_id, crop_id, status
        FROM bookings
       WHERE booking_code = $1
         AND ($2::uuid[] IS NULL OR centre_id = ANY($2::uuid[]))
@@ -4239,16 +4239,38 @@ async function centreCropStorage(centreId) {
   );
   return res.rows;
 }
-async function setOfficerReportedStorage(centreId, cropId, availableKg, userId) {
+async function setCropStorageOverrides(centreId, cropId, values, userId) {
+  const sets = [];
+  const params = [centreId, cropId];
+  if (values.capacityKg !== void 0) {
+    params.push(values.capacityKg);
+    sets.push(`storage_capacity_kg = $${params.length}`);
+  }
+  if (values.availableKg !== void 0) {
+    params.push(values.availableKg);
+    sets.push(`officer_reported_available_kg = $${params.length}`);
+    sets.push("officer_reported_at = now()");
+    params.push(userId);
+    sets.push(`officer_reported_by_user_id = $${params.length}`);
+  }
+  if (sets.length === 0) return false;
   const res = await query(
     `UPDATE centre_crop_configurations
-        SET officer_reported_available_kg = $3,
-            officer_reported_at = now(),
-            officer_reported_by_user_id = $4
+        SET ${sets.join(", ")}
       WHERE centre_id = $1 AND crop_id = $2 AND is_active`,
-    [centreId, cropId, availableKg, userId]
+    params
   );
   return (res.rowCount ?? 0) > 0;
+}
+async function clearReportedAvailable(client, centreId, cropId) {
+  await client.query(
+    `UPDATE centre_crop_configurations
+        SET officer_reported_available_kg = NULL,
+            officer_reported_at = NULL,
+            officer_reported_by_user_id = NULL
+      WHERE centre_id = $1 AND crop_id = $2 AND is_active`,
+    [centreId, cropId]
+  );
 }
 async function createProcurement(client, bookingId, centreId, officerUserId) {
   const res = await client.query(
@@ -4852,6 +4874,7 @@ async function updatePaymentStatus2(bookingCode, to, reference, ctx2) {
         { status: "PAYMENT_PENDING" },
         { status: "COMPLETED" }
       );
+      await clearReportedAvailable(client, booking.centre_id, booking.crop_id);
     }
     const view = toPaymentView(updated);
     await notifyPaymentUpdated(client, booking.id, payment.id, to, view.amountRupees);
@@ -4933,7 +4956,9 @@ async function centreStorageSummary(centreId) {
   return rows.map((row) => {
     const capacityKg = num(row.storage_capacity_kg);
     const occupiedKg = num(row.occupied_kg) ?? 0;
-    const availableKg = capacityKg === null ? null : Math.max(capacityKg - occupiedKg, 0);
+    const computedAvailableKg = capacityKg === null ? null : Math.max(capacityKg - occupiedKg, 0);
+    const reportedAvailableKg = num(row.officer_reported_available_kg);
+    const availableKg = reportedAvailableKg ?? computedAvailableKg;
     const filledPercent = capacityKg && capacityKg > 0 ? Math.min(100, Math.round((capacityKg - (availableKg ?? 0)) / capacityKg * 100)) : null;
     return {
       cropId: row.crop_id,
@@ -4941,13 +4966,8 @@ async function centreStorageSummary(centreId) {
       capacityKg,
       occupiedKg,
       availableKg,
+      isManuallyReported: reportedAvailableKg !== null,
       filledPercent,
-      officerReportedAvailableKg: num(row.officer_reported_available_kg),
-      officerReportedAt: row.officer_reported_at,
-      // The dashboard's fill-me-in reminder watches this: a crop with a
-      // recorded capacity that the officer has never confirmed a real
-      // available figure for.
-      needsOfficerReport: capacityKg !== null && row.officer_reported_at === null,
       reasonCode: capacityKg === null ? "NO_STORAGE_CAPACITY_CONFIGURED" : null
     };
   });
@@ -5067,7 +5087,7 @@ function buildOfficerRouter() {
     path: `${BASE5}/officer/centres/:centreId/storage/:cropId`,
     auth: { kind: "permission", permission: "storage.report_available" },
     csrf: true,
-    summary: "Report the currently-available storage for one crop."
+    summary: "Edit the storage capacity and/or currently-available figure for one crop."
   });
   router.put(
     "/officer/centres/:centreId/storage/:cropId",
@@ -5076,14 +5096,16 @@ function buildOfficerRouter() {
       const centreId = parse3(z6.string().uuid("CENTRE_ID_INVALID"), req.params.centreId);
       const cropId = parse3(z6.string().uuid("CROP_ID_INVALID"), req.params.cropId);
       if (!actorMayActOnCentre(req.actor, centreId)) throw notFound("Centre not found");
-      const { availableKg } = parse3(
-        z6.object({ availableKg: MeasuredKgSchema }),
+      const values = parse3(
+        z6.object({ capacityKg: MeasuredKgSchema.optional(), availableKg: MeasuredKgSchema.optional() }).refine((v) => v.capacityKg !== void 0 || v.availableKg !== void 0, {
+          message: "At least one of capacityKg or availableKg is required"
+        }),
         req.body
       );
-      const updated = await setOfficerReportedStorage(
+      const updated = await setCropStorageOverrides(
         centreId,
         cropId,
-        availableKg,
+        values,
         req.actor.userId
       );
       if (!updated) {
@@ -5098,7 +5120,7 @@ function buildOfficerRouter() {
           actorRole: "OFFICER",
           actorIp: req.clientIp ?? null,
           requestId: req.requestId ?? null,
-          after: { centreId, cropId, availableKg }
+          after: { centreId, cropId, ...values }
         })
       );
       sendData(res, 200, { centreId, crops: await centreStorageSummary(centreId) });

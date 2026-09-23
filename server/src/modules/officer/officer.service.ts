@@ -629,6 +629,10 @@ export async function updatePaymentStatus(
         { status: 'PAYMENT_PENDING' },
         { status: 'COMPLETED' },
       );
+      // This booking just became part of the COMPLETED-bookings occupancy
+      // figure, so any standing manual correction for this crop is stale —
+      // let the computed figure take back over.
+      await repo.clearReportedAvailable(client, booking.centre_id, booking.crop_id);
     }
 
     const view = toPaymentView(updated);
@@ -737,12 +741,13 @@ export async function centreOverview(centreId: string, serviceDate: string, time
 
 /**
  * Crop-wise storage summary for the dashboard: capacity recorded at officer
- * registration against grain actually on hand (COMPLETED bookings), plus the
- * officer's own periodic confirmation of what is actually free right now —
- * the app's own bookings are not the only thing that moves grain in or out
- * of a real warehouse, so `availableKg` (computed) and
- * `officerReportedAvailableKg` (self-reported) are both surfaced rather than
- * one silently standing in for the other.
+ * registration (or edited later) against grain actually on hand (COMPLETED
+ * bookings) — unless the officer has manually corrected the available
+ * figure more recently than that computation, since the app's own bookings
+ * are not the only thing that moves grain through a real warehouse. That
+ * correction is cleared automatically the next time a booking here
+ * completes (`clearReportedAvailable`), so `availableKg` never goes stale
+ * next to a booking count that has since moved on.
  */
 export async function centreStorageSummary(centreId: string) {
   const rows = await repo.centreCropStorage(centreId);
@@ -750,7 +755,10 @@ export async function centreStorageSummary(centreId: string) {
   return rows.map((row) => {
     const capacityKg = num(row.storage_capacity_kg);
     const occupiedKg = num(row.occupied_kg) ?? 0;
-    const availableKg = capacityKg === null ? null : Math.max(capacityKg - occupiedKg, 0);
+    const computedAvailableKg =
+      capacityKg === null ? null : Math.max(capacityKg - occupiedKg, 0);
+    const reportedAvailableKg = num(row.officer_reported_available_kg);
+    const availableKg = reportedAvailableKg ?? computedAvailableKg;
     const filledPercent =
       capacityKg && capacityKg > 0
         ? Math.min(100, Math.round(((capacityKg - (availableKg ?? 0)) / capacityKg) * 100))
@@ -762,13 +770,8 @@ export async function centreStorageSummary(centreId: string) {
       capacityKg,
       occupiedKg,
       availableKg,
+      isManuallyReported: reportedAvailableKg !== null,
       filledPercent,
-      officerReportedAvailableKg: num(row.officer_reported_available_kg),
-      officerReportedAt: row.officer_reported_at,
-      // The dashboard's fill-me-in reminder watches this: a crop with a
-      // recorded capacity that the officer has never confirmed a real
-      // available figure for.
-      needsOfficerReport: capacityKg !== null && row.officer_reported_at === null,
       reasonCode: capacityKg === null ? 'NO_STORAGE_CAPACITY_CONFIGURED' : null,
     };
   });
