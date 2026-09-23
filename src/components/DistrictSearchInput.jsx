@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getAllDistrictsFlat, searchDistricts } from "../data/allDistricts.js";
 
@@ -7,19 +7,21 @@ export default function DistrictSearchInput({
   selectedDistrictId = "",
   onSelectDistrict,
   disabled = false,
+  error = null,
 }) {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
+  const [hasSearched, setHasSearched] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
 
-  // All districts across India with backend IDs mapped for demonstration districts
+  // All districts across India with backend IDs mapped where available
   const allDistricts = useMemo(() => {
     return getAllDistrictsFlat(districts);
   }, [districts]);
 
-  // Current selected district name
+  // Currently selected district (matched by id or name)
   const selectedDistrict = useMemo(() => {
     if (!selectedDistrictId) return null;
     return (
@@ -42,23 +44,30 @@ export default function DistrictSearchInput({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Search logic
   const performSearch = (term) => {
     const q = (term ?? searchTerm).trim();
     if (!q) {
       setSearchResults([]);
+      setHasSearched(false);
       setIsOpen(false);
       return;
     }
+
     const matches = searchDistricts(q, districts);
     setSearchResults(matches);
+    setHasSearched(true);
     setIsOpen(true);
+
+    if (matches.length === 1) {
+      onSelectDistrict?.(matches[0].id, matches[0].name);
+    }
   };
 
-  const handlePick = (item) => {
-    onSelectDistrict?.(item.id, item.name);
+  const handlePick = (district) => {
+    onSelectDistrict?.(district.id, district.name);
     setSearchTerm("");
     setSearchResults([]);
+    setHasSearched(false);
     setIsOpen(false);
   };
 
@@ -66,6 +75,7 @@ export default function DistrictSearchInput({
     onSelectDistrict?.("", "");
     setSearchTerm("");
     setSearchResults([]);
+    setHasSearched(false);
     setIsOpen(false);
   };
 
@@ -85,6 +95,7 @@ export default function DistrictSearchInput({
                 performSearch(val);
               } else if (!val.trim()) {
                 setSearchResults([]);
+                setHasSearched(false);
                 setIsOpen(false);
               }
             }}
@@ -106,6 +117,7 @@ export default function DistrictSearchInput({
               onClick={() => {
                 setSearchTerm("");
                 setSearchResults([]);
+                setHasSearched(false);
                 setIsOpen(false);
               }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 font-bold text-sm"
@@ -128,7 +140,7 @@ export default function DistrictSearchInput({
       </div>
 
       {/* Instant Search Results Dropdown */}
-      {isOpen && (
+      {isOpen && hasSearched && (
         <div className="absolute z-50 left-0 right-0 top-full mt-1 max-h-64 overflow-y-auto rounded-xl border border-emerald-300 bg-white shadow-xl ring-1 ring-black/5 divide-y divide-slate-100">
           {searchResults.length === 0 ? (
             <div className="p-4 text-center text-sm text-slate-500 font-medium">
@@ -142,7 +154,7 @@ export default function DistrictSearchInput({
               <ul className="p-1">
                 {searchResults.slice(0, 50).map((d) => (
                   <li
-                    key={`${d.state}-${d.name}`}
+                    key={d.id}
                     onClick={() => handlePick(d)}
                     className="flex cursor-pointer items-center justify-between rounded-lg px-3.5 py-2.5 text-sm text-black transition hover:bg-emerald-50 hover:text-emerald-950 font-medium"
                   >
@@ -179,6 +191,10 @@ export default function DistrictSearchInput({
             Change
           </button>
         </div>
+      )}
+
+      {error && (
+        <p className="text-xs font-semibold text-red-600">{error}</p>
       )}
     </div>
   );

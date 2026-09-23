@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -9,7 +9,6 @@ import LanguageToggle from "../../components/LanguageToggle";
 import { ErrorState } from "../../components/StateViews";
 import MultiSelect from "../../components/MultiSelect";
 import DistrictSearchInput from "../../components/DistrictSearchInput";
-import { getDistrictsGroupedByState } from "../../data/allDistricts.js";
 
 const CONSENT_POLICY_VERSION = "v1";
 
@@ -155,11 +154,6 @@ function OfficerRegistration() {
       setSubmitting(false);
     }
   }
-
-  const districtGroups = useMemo(
-    () => getDistrictsGroupedByState(districts.data ?? []),
-    [districts.data],
-  );
 
   const inputClasses = (hasError) =>
     `min-h-13 w-full rounded-xl border bg-white px-4 text-sm text-black outline-none transition placeholder:text-black focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 ${
@@ -375,7 +369,7 @@ function OfficerRegistration() {
                   <div className="space-y-2">
                     <label
                       htmlFor="districtId"
-                      className="block text-sm font-bold text-black"
+                      className="mb-2 block text-sm font-bold text-black"
                     >
                       {t("district")}
                     </label>
@@ -385,26 +379,11 @@ function OfficerRegistration() {
                       selectedDistrictId={districtId}
                       onSelectDistrict={(id) => {
                         setDistrictId(id);
-                        setCentreId("");
-                        clearFieldError("districtId");
-                        clearFieldError("centreId");
-                      }}
-                      disabled={districts.loading}
-                    />
-
-                    <select
-                      id="districtId"
-                      value={districtId}
-                      disabled={districts.loading}
-                      onChange={(event) => {
-                        setDistrictId(event.target.value);
                         /*
                          * The centre belongs to one district, so the previous
-                         * choice cannot survive a change of district. Clearing
-                         * the select's OPTIONS is not enough — the <select>
-                         * shows blank because no option matches, but the state
-                         * still holds the previous id and would be submitted,
-                         * which the server correctly rejects with
+                         * choice cannot survive a change of district. The
+                         * state still holds the previous id and would be
+                         * submitted, which the server correctly rejects with
                          * CENTRE_NOT_IN_DISTRICT. Crop choices are independent
                          * of centre, so they are left as they are.
                          */
@@ -412,24 +391,9 @@ function OfficerRegistration() {
                         clearFieldError("districtId");
                         clearFieldError("centreId");
                       }}
-                      className={inputClasses(
-                        fieldErrors.districtId || districts.error,
-                      )}
-                    >
-                      <option value="">
-                        {districts.loading ? t("loading") : t("selectDistrict")}
-                      </option>
-
-                      {districtGroups.map((group) => (
-                        <optgroup key={group.state} label={group.state}>
-                          {group.districts.map((district) => (
-                            <option key={district.id} value={district.id}>
-                              {district.name}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
+                      disabled={districts.loading}
+                      error={fieldErrors.districtId}
+                    />
 
                     {districts.error && (
                       <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -446,12 +410,6 @@ function OfficerRegistration() {
                           {t("tryAgain")}
                         </button>
                       </div>
-                    )}
-
-                    {fieldErrors.districtId && (
-                      <p className="mt-2 text-xs font-semibold text-red-700">
-                        {fieldErrors.districtId}
-                      </p>
                     )}
                   </div>
 
