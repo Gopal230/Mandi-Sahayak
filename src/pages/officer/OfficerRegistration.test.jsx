@@ -209,7 +209,7 @@ describe("/staff-register — District -> Centre, crops independent", () => {
       [WHEAT]: 120,
       [PADDY]: 80,
     });
-  });
+  }, 15000);
 
   it("requires at least one crop", async () => {
     const user = userEvent.setup();

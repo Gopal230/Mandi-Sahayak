@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -9,6 +9,7 @@ import LanguageToggle from "../../components/LanguageToggle";
 import { ErrorState } from "../../components/StateViews";
 import MultiSelect from "../../components/MultiSelect";
 import DistrictSearchInput from "../../components/DistrictSearchInput";
+import { getDistrictsGroupedByState } from "../../data/allDistricts.js";
 
 const CONSENT_POLICY_VERSION = "v1";
 
@@ -154,6 +155,11 @@ function OfficerRegistration() {
       setSubmitting(false);
     }
   }
+
+  const districtGroups = useMemo(
+    () => getDistrictsGroupedByState(districts.data ?? []),
+    [districts.data],
+  );
 
   const inputClasses = (hasError) =>
     `min-h-13 w-full rounded-xl border bg-white px-4 text-sm text-black outline-none transition placeholder:text-black focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 ${
@@ -414,10 +420,14 @@ function OfficerRegistration() {
                         {districts.loading ? t("loading") : t("selectDistrict")}
                       </option>
 
-                      {(districts.data ?? []).map((district) => (
-                        <option key={district.id} value={district.id}>
-                          {district.name}
-                        </option>
+                      {districtGroups.map((group) => (
+                        <optgroup key={group.state} label={group.state}>
+                          {group.districts.map((district) => (
+                            <option key={district.id} value={district.id}>
+                              {district.name}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
 

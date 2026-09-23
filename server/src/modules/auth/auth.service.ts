@@ -23,6 +23,7 @@ import type { CreatedSession } from "../../core/session.ts";
 import { issueChallenge, verifyChallenge } from "./otp.service.ts";
 import type { ChallengeRow, ChallengeView } from "./otp.service.ts";
 import type { RegisterStartInput, StaffRegisterInput } from "./auth.schemas.ts";
+import { findKnownDistrict } from "../../data/allDistricts.ts";
 
 export type RequestCtx = {
   ip: string | null;
@@ -68,18 +69,50 @@ export async function startRegistration(
     );
   }
 
-  const district = await client.query(
+  let district = await client.query(
     "SELECT id, state_id FROM districts WHERE id = $1",
     [input.districtId],
   );
+
+  if (district.rowCount === 0) {
+    const known = findKnownDistrict(input.districtId);
+    if (known) {
+      let stateRow = await client.query(
+        "SELECT id FROM states WHERE lower(name) = lower($1)",
+        [known.state],
+      );
+      if (stateRow.rowCount === 0) {
+        const fallback = await client.query(
+          "SELECT id FROM states ORDER BY created_at LIMIT 1",
+        );
+        stateRow = fallback;
+      }
+      if (stateRow.rowCount && stateRow.rowCount > 0) {
+        const stateId = stateRow.rows[0].id;
+        await client.query(
+          `INSERT INTO districts (id, state_id, name, data_type)
+           VALUES ($1, $2, $3, 'CONFIGURED')
+           ON CONFLICT DO NOTHING`,
+          [known.id, stateId, known.name],
+        );
+        district = await client.query(
+          "SELECT id, state_id FROM districts WHERE id = $1 OR (state_id = $2 AND lower(btrim(name)) = lower(btrim($3)))",
+          [known.id, stateId, known.name],
+        );
+      }
+    }
+  }
+
   if (district.rowCount === 0) {
     throw unprocessable(ErrorCodes.DISTRICT_NOT_FOUND, "District not found");
   }
 
+  const resolvedDistrictId = district.rows[0].id;
+
   if (input.villageId) {
     const village = await client.query(
       "SELECT id FROM villages WHERE id = $1 AND district_id = $2",
-      [input.villageId, input.districtId],
+      [input.villageId, resolvedDistrictId],
     );
     if (village.rowCount === 0) {
       throw unprocessable(
@@ -100,7 +133,7 @@ export async function startRegistration(
     [
       input.phone,
       input.fullName,
-      input.districtId,
+      resolvedDistrictId,
       input.villageId ?? null,
       input.locale,
       input.consent.policyVersion,
