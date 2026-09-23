@@ -128,9 +128,8 @@ const ReportsPage = ({
   const reports = [
     {
       key: "dailyCollection",
-      title: t("dailyCollection"),
+      title: t("todaysClearedQueue"),
       value: t("slotsClearedCount", { count: clearedFarmers.length || 0 }),
-      detail: t("todaysClearedQueue"),
     },
     {
       key: "farmersServed",
@@ -140,9 +139,8 @@ const ReportsPage = ({
     },
     {
       key: "netDue",
-      title: t("netDue"),
+      title: t("paymentsEnteredToday"),
       value: `₹${totalAmount.toLocaleString("en-IN")}`,
-      detail: t("paymentsEnteredToday"),
     },
   ];
 
@@ -241,7 +239,9 @@ const ReportsPage = ({
               <h3 className="mt-2 text-3xl font-black text-black">
                 {report.value}
               </h3>
-              <p className="mt-2 text-sm text-black">{report.detail}</p>
+              {report.detail && (
+                <p className="mt-2 text-sm text-black">{report.detail}</p>
+              )}
             </div>
           ))}
         </div>
