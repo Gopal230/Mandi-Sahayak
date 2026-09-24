@@ -24,6 +24,15 @@ import { issueChallenge, verifyChallenge } from "./otp.service.ts";
 import type { ChallengeRow, ChallengeView } from "./otp.service.ts";
 import type { RegisterStartInput, StaffRegisterInput } from "./auth.schemas.ts";
 import { findKnownDistrict } from "../../data/allDistricts.ts";
+// The DEMO_MODE self-activation below provisions through the same repository
+// calls the admin approval route uses, so the two cannot drift apart.
+import {
+  applyRequestedCropConfigurations,
+  assignOfficer,
+  createOfficer,
+  employeeCodeTaken,
+  settleRegistrationRequest,
+} from "../admin/admin.repository.ts";
 
 export type RequestCtx = {
   ip: string | null;
@@ -77,16 +86,16 @@ export async function startRegistration(
   if (district.rowCount === 0) {
     const known = findKnownDistrict(input.districtId);
     if (known) {
-      let stateRow = await client.query(
+      // Only the district's own state will do. This used to fall back to the
+      // oldest state row when the named one was missing, which filed every
+      // unseeded district under Uttar Pradesh and made the farmer's recorded
+      // geography wrong in a way nothing downstream could detect. A missing
+      // state now leaves the district unresolved and the registration is
+      // refused below with DISTRICT_NOT_FOUND.
+      const stateRow = await client.query(
         "SELECT id FROM states WHERE lower(name) = lower($1)",
         [known.state],
       );
-      if (stateRow.rowCount === 0) {
-        const fallback = await client.query(
-          "SELECT id FROM states ORDER BY created_at LIMIT 1",
-        );
-        stateRow = fallback;
-      }
       if (stateRow.rowCount && stateRow.rowCount > 0) {
         const stateId = stateRow.rows[0].id;
         await client.query(
@@ -217,11 +226,12 @@ export async function startFarmerLogin(
 
 export type RegistrationRequestSubmitted = {
   requestId: string;
-  status: 'PENDING';
+  status: 'PENDING' | 'ACTIVE';
 };
 
 /**
- * Records an officer account APPLICATION. Creates no account.
+ * Records an officer account APPLICATION. Creates no account — unless
+ * DEMO_MODE is on, which is the one documented exception described below.
  *
  * THE BUG THIS REPLACES: this function used to insert directly into `users`,
  * `officers`, `user_roles` and `officer_centre_assignments` — so anyone who
@@ -235,6 +245,29 @@ export type RegistrationRequestSubmitted = {
  * configuration write. An administrator with `officer.create` is the only
  * path from a request to an account (admin.routes.ts, POST
  * /admin/officer-registration-requests/:id/approve).
+ *
+ * THE DEMO_MODE EXCEPTION, AND WHY IT IS SAFE TO HAVE AT ALL.
+ *   A judge walking through the prototype has no administrator to approve them,
+ *   so under DEMO_MODE a submission activates itself immediately and this
+ *   returns status ACTIVE. That is deliberately the same self-service
+ *   privilege grant described above, re-enabled on purpose and only where it
+ *   cannot reach anyone real:
+ *
+ *     * config.ts refuses to start with DEMO_MODE under NODE_ENV=production
+ *       unless ALLOW_DEMO_IN_PRODUCTION is also set, so this cannot ship live
+ *       by forgetting a flag.
+ *     * The account is marked officers.is_demo = true, so seeded and
+ *       self-activated demo officers are both distinguishable from officers an
+ *       administrator provisioned.
+ *     * Activation goes through the very same repository calls the admin
+ *       approval route uses, rather than a second provisioning path that could
+ *       drift away from it.
+ *     * No human approved it, so decided_by, created_by and assigned_by are
+ *       all recorded NULL rather than being attributed to some convenient
+ *       administrator who did nothing.
+ *
+ *   With DEMO_MODE off — every real deployment — the behaviour is unchanged
+ *   and a submission still creates one PENDING row and nothing else.
  */
 export async function submitOfficerRegistration(
   client: PoolClient,
@@ -351,11 +384,13 @@ export async function submitOfficerRegistration(
     throw error;
   }
 
-  // NOTHING ELSE HAPPENS HERE. No user, no officer, no role, no centre
-  // assignment, no centre_crop_configurations write, and — because there is
-  // no account yet to verify — no OTP challenge. `startStaffLogin` reads
-  // `users` by phone; a pending request has no row there and so cannot sign
-  // in, which is the whole point.
+  const demoMode = getConfig().DEMO_MODE;
+
+  // With DEMO_MODE off, NOTHING ELSE HAPPENS HERE. No user, no officer, no
+  // role, no centre assignment, no centre_crop_configurations write, and —
+  // because there is no account yet to verify — no OTP challenge.
+  // `startStaffLogin` reads `users` by phone; a pending request has no row
+  // there and so cannot sign in, which is the whole point.
   await writeAudit(client, {
     action: AuditActions.OFFICER_REGISTRATION_REQUESTED,
     entityType: "officer_registration_request",
@@ -366,11 +401,71 @@ export async function submitOfficerRegistration(
     metadata: {
       requestedCentreId: input.centreId,
       cropIds: input.cropIds,
-      approvalRequired: true,
+      approvalRequired: !demoMode,
     },
   });
 
-  return { requestId, status: "PENDING" };
+  if (!demoMode) return { requestId, status: "PENDING" };
+
+  // Deterministic in the request id, which is already unique, so the generated
+  // identifiers need no taken-check — exactly as the admin approval route
+  // derives them.
+  const shortId = requestId.replace(/-/g, "").slice(0, 8);
+  const employeeCode = input.employeeCode || `OFF-${shortId.toUpperCase()}`;
+
+  if (await employeeCodeTaken(client, employeeCode)) {
+    throw conflict(
+      ErrorCodes.EMPLOYEE_CODE_TAKEN,
+      "That officer ID is already in use.",
+    );
+  }
+
+  const ids = await createOfficer(client, {
+    fullName: input.fullName,
+    username: `officer-${shortId}`,
+    passwordHash: null,
+    phoneE164: input.phone,
+    employeeCode,
+    designation: null,
+    createdByUserId: null,
+    isDemo: true,
+  });
+
+  await assignOfficer(client, ids.officerId, input.centreId, null);
+
+  await applyRequestedCropConfigurations(
+    client,
+    input.centreId,
+    input.cropIds,
+    input.cropStorageQuintals,
+    null,
+  );
+
+  await settleRegistrationRequest(
+    client,
+    requestId,
+    "APPROVED",
+    null,
+    "Activated automatically because the server is running in DEMO_MODE.",
+    ids.officerId,
+  );
+
+  await writeAudit(client, {
+    action: AuditActions.OFFICER_REGISTRATION_APPROVED,
+    entityType: "officer",
+    entityId: ids.officerId,
+    actorRole: "SYSTEM",
+    actorIp: ctx.ip,
+    requestId: ctx.requestId,
+    metadata: {
+      registrationRequestId: requestId,
+      centreId: input.centreId,
+      employeeCode,
+      autoApproved: "DEMO_MODE",
+    },
+  });
+
+  return { requestId, status: "ACTIVE" };
 }
 
 // ---------------------------------------------------------------------------

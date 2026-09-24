@@ -43,6 +43,19 @@ import { statesData } from "./indianDistricts.js";
 const DISTRICTS_BY_ID = new Map<string, KnownDistrict>();
 const DISTRICTS_BY_NAME = new Map<string, KnownDistrict>();
 
+/**
+ * Decode the HTML entities and stray whitespace the bundled list carries, so a
+ * district resolves to the name import 0006 seeded rather than to a second row
+ * spelled with the artefact still in it.
+ *
+ * The id is deliberately NOT computed from this. The already-shipped frontend
+ * hashes the raw bundled string, and that hash is what arrives on the wire, so
+ * changing the input here would stop resolving the very ids this map exists to
+ * resolve. Raw string in, corrected name out.
+ */
+const cleanName = (value: string) =>
+  value.replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+
 (statesData || []).forEach((st: { state: string; districts: string[] }) => {
   (st.districts || []).forEach((dist: string) => {
     const trimmed = dist.trim();
@@ -50,8 +63,8 @@ const DISTRICTS_BY_NAME = new Map<string, KnownDistrict>();
     const id = demoId || deterministicUuid(`${st.state}:${trimmed}`);
     const entry: KnownDistrict = {
       id,
-      name: trimmed,
-      state: st.state,
+      name: cleanName(trimmed),
+      state: cleanName(st.state),
     };
     DISTRICTS_BY_ID.set(id.toLowerCase(), entry);
     DISTRICTS_BY_NAME.set(`${st.state.toLowerCase()}:${trimmed.toLowerCase()}`, entry);
