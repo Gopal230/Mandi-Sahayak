@@ -442,7 +442,7 @@ export async function assignOfficer(
   client: PoolClient,
   officerId: string,
   centreId: string,
-  byUserId: string,
+  byUserId: string | null,
 ): Promise<boolean> {
   const res = await client.query(
     `INSERT INTO officer_centre_assignments (officer_id, centre_id, assigned_by_user_id)
@@ -495,7 +495,11 @@ export async function createOfficer(
     phoneE164: string;
     employeeCode: string;
     designation: string | null;
-    createdByUserId: string;
+    // Nullable because an officer can also be created with no human actor:
+    // DEMO_MODE self-registration activates itself. The column has always
+    // permitted NULL; recording one is honest about nobody having approved it.
+    createdByUserId: string | null;
+    isDemo?: boolean;
   },
 ): Promise<{ userId: string; officerId: string }> {
   const user = await client.query<{ id: string }>(
@@ -512,9 +516,15 @@ export async function createOfficer(
   );
 
   const officer = await client.query<{ id: string }>(
-    `INSERT INTO officers (user_id, employee_code, designation, created_by_user_id)
-     VALUES ($1,$2,$3,$4) RETURNING id`,
-    [userId, input.employeeCode, input.designation, input.createdByUserId],
+    `INSERT INTO officers (user_id, employee_code, designation, created_by_user_id, is_demo)
+     VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+    [
+      userId,
+      input.employeeCode,
+      input.designation,
+      input.createdByUserId,
+      input.isDemo ?? false,
+    ],
   );
 
   return { userId, officerId: officer.rows[0].id };
@@ -729,7 +739,7 @@ export async function applyRequestedCropConfigurations(
   centreId: string,
   cropIds: string[],
   cropStorageQuintals: Record<string, number>,
-  configuredByUserId: string,
+  configuredByUserId: string | null,
 ): Promise<void> {
   for (const cropId of cropIds) {
     const quintals = Number(cropStorageQuintals[cropId]);
@@ -790,7 +800,7 @@ export async function settleRegistrationRequest(
   client: PoolClient,
   id: string,
   status: 'APPROVED' | 'REJECTED',
-  byUserId: string,
+  byUserId: string | null,
   note: string | null,
   createdOfficerId: string | null,
 ): Promise<void> {
