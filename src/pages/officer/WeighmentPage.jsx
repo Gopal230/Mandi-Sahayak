@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -12,7 +12,6 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
   const initial = useMemo(
     () => ({
       accepted: farmer.actualWeight || (netWeight > 0 ? String(netWeight) : ""),
-      rejected: farmer.quality?.brokenGrain ?? "",
       moisture: farmer.quality?.moisture ?? "",
       rejectionReason: farmer.rejectionReason ?? "",
     }),
@@ -23,13 +22,34 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
   );
 
   const [accepted, setAccepted] = useState(initial.accepted);
-  const [rejected, setRejected] = useState(initial.rejected);
   const [moisture, setMoisture] = useState(initial.moisture);
   const [rejectionReason, setRejectionReason] = useState(
     initial.rejectionReason,
   );
 
-  const emit = (next) => onValuesChange({ ...next });
+  const maxAccepted = netWeight > 0 ? netWeight : 0;
+  const acceptedNumber = Math.min(
+    Math.max(Number(accepted) || 0, 0),
+    maxAccepted || Infinity,
+  );
+  const rejected =
+    maxAccepted > 0 ? Number((maxAccepted - acceptedNumber).toFixed(2)) : 0;
+
+  useEffect(() => {
+    onValuesChange({
+      accepted,
+      rejected: String(rejected),
+      moisture,
+      rejectionReason,
+    });
+  }, [accepted, rejected, moisture, rejectionReason, onValuesChange]);
+
+  const clampAccepted = (value) => {
+    if (value === "" || maxAccepted <= 0) return value;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return value;
+    return String(Math.min(Math.max(numeric, 0), maxAccepted));
+  };
 
   return (
     <div className="mt-6 rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm">
@@ -42,11 +62,10 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
           {t("acceptedQuantity")} ({t("quintal")})
           <input
             type="number"
+            min="0"
+            max={maxAccepted || undefined}
             value={accepted}
-            onChange={(event) => {
-              setAccepted(event.target.value);
-              emit({ accepted: event.target.value, rejected, moisture, rejectionReason });
-            }}
+            onChange={(event) => setAccepted(clampAccepted(event.target.value))}
             className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
           />
         </label>
@@ -56,10 +75,7 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
           <input
             type="number"
             value={rejected}
-            onChange={(event) => {
-              setRejected(event.target.value);
-              emit({ accepted, rejected: event.target.value, moisture, rejectionReason });
-            }}
+            readOnly
             className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
           />
         </label>
@@ -69,10 +85,7 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
           <input
             type="number"
             value={moisture}
-            onChange={(event) => {
-              setMoisture(event.target.value);
-              emit({ accepted, rejected, moisture: event.target.value, rejectionReason });
-            }}
+            onChange={(event) => setMoisture(event.target.value)}
             className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
           />
         </label>
@@ -82,10 +95,7 @@ function QualityCheckFields({ farmer, netWeight, onValuesChange, t }) {
             {t("rejectionReason")}
             <input
               value={rejectionReason}
-              onChange={(event) => {
-                setRejectionReason(event.target.value);
-                emit({ accepted, rejected, moisture, rejectionReason: event.target.value });
-              }}
+              onChange={(event) => setRejectionReason(event.target.value)}
               className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-black outline-none"
             />
           </label>
