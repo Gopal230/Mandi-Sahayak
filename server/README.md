@@ -23,6 +23,10 @@ Schema reference: [`../docs/database-schema.md`](../docs/database-schema.md).
 
 API contracts live in [`../docs/api/`](../docs/api/).
 
+For an end-user deployment without locally installed PostgreSQL, see
+[`../docs/deployment-neon.md`](../docs/deployment-neon.md) for managed Neon
+PostgreSQL and Vercel setup.
+
 > ### Status
 > Migrations are **applied and verified** against PostgreSQL 17.11, twice from
 > clean databases, with identical object counts. 50 SQL probes and 323 tests
