@@ -93,8 +93,8 @@ function OfficerPortal() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f3f5f3] p-0 text-black">
-      <div className="mx-auto max-w-[1280px] min-w-0">
-        <div className="bg-[#0e8a48] px-4 py-4 text-white sm:px-6">
+      <div className="mx-auto max-w-[1600px] min-w-0 px-3 pt-3 sm:px-4 sm:pt-4 lg:px-6 lg:pt-6">
+        <div className="overflow-hidden rounded-[28px] bg-[#0e8a48] px-4 py-4 text-white sm:px-6">
           <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 w-full sm:w-auto">
               <p className="flex items-center gap-2 text-lg font-black uppercase tracking-[0.18em] text-white">
@@ -170,9 +170,9 @@ function OfficerPortal() {
           </div>
         )}
 
-        <div className="mt-4 grid min-w-0 gap-4 px-4 pb-6 lg:mt-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-5 lg:px-6">
-          <aside className="rounded-[28px] border border-emerald-200 bg-white/90 p-3 shadow-[0_8px_24px_rgba(16,64,42,0.08)] sm:p-4">
-            <div className="grid grid-cols-2 gap-3 lg:block lg:space-y-3">
+        <div className="mt-4 min-w-0 space-y-4 pb-6 sm:mt-5 lg:mt-6 lg:space-y-5">
+          <aside className="rounded-[28px] border border-emerald-200 bg-white/90 p-3 shadow-[0_4px_14px_rgba(16,64,42,0.06)] sm:p-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {queueStats.map((stat) => (
                 <div
                   key={stat.labelKey}
@@ -189,7 +189,7 @@ function OfficerPortal() {
             </div>
           </aside>
 
-          <main className="min-w-0 rounded-[30px] border border-[#e7e7e7] bg-[#fafafa] p-3 shadow-[0_8px_18px_rgba(15,25,20,0.04)] sm:p-4 lg:p-6">
+          <main className="min-w-0 rounded-[30px] border border-[#e7e7e7] bg-[#fafafa] p-3 shadow-[0_4px_14px_rgba(15,25,20,0.04)] sm:p-4 lg:p-6">
             {centre.centres.length > 1 && (
               <div className="mb-4">
                 <CentrePicker centre={centre} />
