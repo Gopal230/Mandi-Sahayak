@@ -30,7 +30,7 @@ export function FarmerLayout({
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
-      <header className="bg-green-700 text-white">
+      <header className="mx-3 mt-3 overflow-hidden rounded-[28px] bg-green-700 text-white sm:mx-4 sm:mt-4 lg:mx-6 lg:mt-6">
         <div className="mx-auto w-full max-w-lg px-4 py-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">

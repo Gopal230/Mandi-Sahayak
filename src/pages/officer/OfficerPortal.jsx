@@ -170,9 +170,9 @@ function OfficerPortal() {
           </div>
         )}
 
-        <div className="mt-4 min-w-0 space-y-4 pb-6 sm:mt-5 lg:mt-6 lg:space-y-5">
-          <aside className="rounded-[28px] border border-emerald-200 bg-white/90 p-3 shadow-[0_4px_14px_rgba(16,64,42,0.06)] sm:p-4">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid min-w-0 items-start gap-4 px-3 pb-6 sm:mt-5 sm:px-4 lg:mt-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-5 lg:px-6">
+          <aside className="self-start rounded-[28px] border border-emerald-200 bg-white/90 p-3 shadow-[0_4px_14px_rgba(16,64,42,0.06)] sm:p-4">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
               {queueStats.map((stat) => (
                 <div
                   key={stat.labelKey}
