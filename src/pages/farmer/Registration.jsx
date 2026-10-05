@@ -143,9 +143,11 @@ function Registration() {
             onClick={() => navigate("/portal")}
             className="flex items-center gap-3 text-left"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
-              <Icon name="grain" className="h-6 w-6" />
-            </span>
+            <img
+              src="/logo.png"
+              alt={t("appName")}
+              className="h-10 w-10 rounded-xl object-contain shadow-sm"
+            />
 
             <span>
               <span className="block text-lg font-black tracking-tight">
@@ -175,9 +177,11 @@ function Registration() {
       <main className="mx-auto w-full max-w-[1000px] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
         <section className="mx-auto w-full max-w-[720px]">
           <div className="mb-7 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100">
-              <Icon name="grain" className="h-7 w-7" />
-            </div>
+            <img
+              src="/logo.png"
+              alt={t("appName")}
+              className="mx-auto h-16 w-16 rounded-2xl object-contain shadow-sm"
+            />
 
             <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-black">
               {t("stepOf", { current: 1, total: 2 })}

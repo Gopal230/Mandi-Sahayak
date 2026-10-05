@@ -64,9 +64,11 @@ function Login() {
             onClick={() => navigate("/portal")}
             className="flex items-center gap-3 text-left"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
-              <Icon name="grain" className="h-6 w-6" />
-            </span>
+            <img
+              src="/logo.png"
+              alt={t("appName")}
+              className="h-10 w-10 rounded-xl object-contain shadow-sm"
+            />
 
             <span>
               <span className="block text-lg font-black tracking-tight">

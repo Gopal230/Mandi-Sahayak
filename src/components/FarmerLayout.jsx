@@ -44,9 +44,11 @@ export function FarmerLayout({
                   ←
                 </button>
               ) : (
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15">
-                  <Icon name="grain" className="h-6 w-6" />
-                </div>
+                <img
+                  src="/logo.png"
+                  alt={t("appName")}
+                  className="h-11 w-11 shrink-0 rounded-xl object-contain shadow-sm"
+                />
               )}
 
               <div className="min-w-0">

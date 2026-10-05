@@ -97,8 +97,12 @@ function OfficerPortal() {
         <div className="overflow-hidden rounded-[28px] bg-[#0e8a48] px-4 py-4 text-white sm:px-6">
           <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 w-full sm:w-auto">
-              <p className="flex items-center gap-2 text-lg font-black uppercase tracking-[0.18em] text-white">
-                <Icon name="grain" className="h-5 w-5" />
+              <p className="flex items-center gap-2.5 text-lg font-black uppercase tracking-[0.18em] text-white">
+                <img
+                  src="/logo.png"
+                  alt={t("appName")}
+                  className="h-8 w-8 rounded-lg object-contain shadow-sm"
+                />
                 {t("appName")}
               </p>
               <p className="mt-1 truncate text-sm font-semibold text-white/85">

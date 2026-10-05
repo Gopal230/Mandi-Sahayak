@@ -30,9 +30,11 @@ function LanguageSelect() {
     <div className="flex min-h-screen flex-col bg-[#f3f5f3]">
       <header className="bg-[#0e8a48] text-white">
         <div className="mx-auto flex min-h-[72px] w-full max-w-[1280px] items-center gap-3 px-4 sm:px-6 lg:px-8">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
-            <Icon name="grain" className="h-6 w-6" />
-          </span>
+          <img
+            src="/logo.png"
+            alt={t("appName")}
+            className="h-10 w-10 rounded-xl object-contain shadow-sm"
+          />
 
           <span className="text-lg font-black tracking-tight">{t("appName")}</span>
         </div>
