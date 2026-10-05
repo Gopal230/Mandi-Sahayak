@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
+import Icon from "./Icon";
 
 const languages = [
   { code: "en", native: "English", short: "EN" },
@@ -52,13 +53,13 @@ export default function LanguageSelector() {
         onClick={() => setOpen((value) => !value)}
         className="flex min-h-10 items-center gap-2 rounded-full border border-white/30 bg-white/15 px-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/25"
       >
-        <span>🌐</span>
+        <Icon name="globe" className="h-4 w-4" />
         <span>{currentLanguage.short}</span>
         <span className="text-xs">▾</span>
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-50 w-52 overflow-hidden rounded-2xl border border-emerald-100 bg-white p-2 shadow-[0_15px_35px_rgba(16,64,42,0.15)]">
+        <div         className="absolute right-0 top-12 z-50 w-52 overflow-hidden rounded-2xl border border-emerald-100 bg-white p-2 shadow-[0_4px_12px_rgba(16,64,42,0.08)]">
           {languages.map((language) => {
             const selected = language.code === currentI18n.language;
 
@@ -74,7 +75,7 @@ export default function LanguageSelector() {
                 }`}
               >
                 <span>{language.native}</span>
-                {selected && <span>✓</span>}
+                {selected && <Icon name="check" className="h-4 w-4" />}
               </button>
             );
           })}

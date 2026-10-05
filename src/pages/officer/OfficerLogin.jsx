@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import api, { DEMO_OTP_ENABLED } from "../../lib/api";
 import { translateFieldErrors } from "../../lib/codes";
 import LanguageToggle from "../../components/LanguageToggle";
+import Icon from "../../components/Icon";
 import { ErrorState } from "../../components/StateViews";
 
 /**
@@ -100,12 +101,12 @@ function OfficerLogin() {
             onClick={() => navigate("/portal")}
             className="flex items-center gap-3 text-left"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-xl">
-              🏛️
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
+              <Icon name="building" className="h-6 w-6" />
             </span>
 
             <span>
-              <span className="block text-lg font-extrabold tracking-tight">
+              <span className="block text-lg font-black tracking-tight">
                 {t("appName")}
               </span>
 
@@ -142,8 +143,8 @@ function OfficerLogin() {
 
           <div className="rounded-[24px] border border-slate-200 bg-white px-5 py-7 shadow-[0_8px_30px_rgba(16,64,42,0.06)] sm:px-8 sm:py-9 lg:px-10 lg:py-10">
             <div className="text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-2xl">
-                🏛️
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50">
+                <Icon name="building" className="h-7 w-7" />
               </div>
 
               <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-black">

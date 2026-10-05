@@ -9,6 +9,7 @@ import {
 } from "../../lib/format";
 import { translateDisplayStatus } from "../../lib/codes";
 import LanguageToggle from "../../components/LanguageToggle";
+import Icon from "../../components/Icon";
 import { DataTypeNote } from "../../components/StateViews";
 
 function BookingConfirmation() {
@@ -37,8 +38,8 @@ function BookingConfirmation() {
       <main className="mx-auto w-full max-w-lg px-4 py-8">
         <div className="rounded-3xl bg-white px-6 py-10 text-center shadow-sm">
           <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-green-100">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-3xl font-bold text-white shadow-sm">
-              ✓
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-white shadow-sm">
+              <Icon name="check" className="h-8 w-8" />
             </div>
           </div>
 

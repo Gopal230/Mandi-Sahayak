@@ -229,7 +229,7 @@ function MyBooking() {
         <>
           {active.length === 0 && past.length === 0 ? (
             <EmptyState
-              icon="🎟️"
+              icon="ticket"
               title={t("noBookingsYet")}
               description={t("noBookingsDescription")}
               action={

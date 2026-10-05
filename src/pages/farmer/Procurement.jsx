@@ -91,7 +91,7 @@ function Procurement() {
         !bookingCode &&
         !bookings.error && (
           <EmptyState
-            icon="🌾"
+            icon="grain"
             title={t("noBookingsYet")}
             description={t("noBookingsDescription")}
             action={
@@ -163,7 +163,7 @@ function Procurement() {
 
       {notStarted && (
         <EmptyState
-          icon="⏳"
+          icon="hourglass"
           title={t("procurementNotStarted")}
           description={t(
             "procurementNotStartedDescription",

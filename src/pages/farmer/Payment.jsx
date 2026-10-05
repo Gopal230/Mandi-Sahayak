@@ -85,7 +85,7 @@ function Payment() {
         !bookingCode &&
         !bookings.error && (
           <EmptyState
-            icon="💳"
+            icon="creditCard"
             title={t("noBookingsYet")}
             description={t("paymentBookingRequired")}
             action={
@@ -133,7 +133,7 @@ function Payment() {
 
       {notReady && (
         <EmptyState
-          icon="⏳"
+          icon="hourglass"
           title={t("paymentNotAvailable")}
           description={t("paymentNotAvailableDescription")}
         />

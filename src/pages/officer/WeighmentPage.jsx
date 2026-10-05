@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import Icon from "../../components/Icon";
+
 /**
  * The accepted / rejected / moisture inputs for the quality-check step. A
  * component of its own, keyed by `${bookingCode}:${apiStatus}` from the
@@ -360,7 +362,13 @@ const WeighmentPage = ({
           disabled={isSaving}
           className="rounded-full bg-green-700 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSaving ? `⏳ ${t("saving")}` : `✅ ${t("saveQualityAndWeight")}`}
+          <span className="inline-flex items-center gap-2">
+            <Icon
+              name={isSaving ? "hourglass" : "check"}
+              className="h-4 w-4"
+            />
+            {isSaving ? t("saving") : t("saveQualityAndWeight")}
+          </span>
         </button>
       </div>
 

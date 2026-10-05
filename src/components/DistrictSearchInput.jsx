@@ -1,9 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getAllDistrictsFlat, searchDistricts } from "../data/allDistricts.js";
+import { filterDistricts, getAllDistrictsFlat } from "../data/allDistricts.js";
+import Icon from "./Icon";
+
+const EMPTY_DISTRICTS = [];
 
 export default function DistrictSearchInput({
-  districts = [],
+  districts = EMPTY_DISTRICTS,
   selectedDistrictId = "",
   onSelectDistrict,
   disabled = false,
@@ -53,7 +56,7 @@ export default function DistrictSearchInput({
       return;
     }
 
-    const matches = searchDistricts(q, districts);
+    const matches = filterDistricts(q, allDistricts);
     setSearchResults(matches);
     setHasSearched(true);
     setIsOpen(true);
@@ -123,7 +126,7 @@ export default function DistrictSearchInput({
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 font-bold text-sm"
               title="Clear"
             >
-              ✕
+              <Icon name="close" className="h-4 w-4" />
             </button>
           )}
         </div>
@@ -135,7 +138,7 @@ export default function DistrictSearchInput({
           className="flex items-center gap-1.5 rounded-xl bg-[#0e8a48] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#0c763e] active:scale-95 disabled:opacity-40 shadow-sm"
         >
           <span>{t("search", "Search")}</span>
-          <span>🔍</span>
+          <Icon name="search" className="h-4 w-4" />
         </button>
       </div>
 
@@ -174,8 +177,8 @@ export default function DistrictSearchInput({
       {selectedDistrict && (
         <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-900 border border-emerald-200 shadow-xs">
           <div className="flex items-center gap-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[10px] text-white">
-              ✓
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white">
+              <Icon name="check" className="h-3 w-3" />
             </span>
             <span>
               {t("selectedDistrict", "Selected District")}:{" "}

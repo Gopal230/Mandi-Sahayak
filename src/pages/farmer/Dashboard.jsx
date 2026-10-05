@@ -17,47 +17,48 @@ import {
   kgToQuintal,
 } from "../../lib/format";
 import FarmerLayout from "../../components/FarmerLayout";
+import Icon from "../../components/Icon";
 import { ErrorState, Loading, StatusBadge } from "../../components/StateViews";
 
 const SERVICES = [
   {
     path: "/book-slot",
-    icon: "📅",
+    icon: "calendar",
     tint: "bg-green-50",
     title: "bookSlot",
     body: "bookProcurementSlot",
   },
   {
     path: "/my-booking",
-    icon: "🎟️",
+    icon: "ticket",
     tint: "bg-blue-50",
     title: "myBooking",
     body: "slotDetails",
   },
   {
     path: "/queue",
-    icon: "🕐",
+    icon: "clock",
     tint: "bg-orange-50",
     title: "queueStatus",
     body: "viewYourPosition",
   },
   {
     path: "/procurement",
-    icon: "🌾",
+    icon: "grain",
     tint: "bg-yellow-50",
     title: "procurement",
     body: "trackProgress",
   },
   {
     path: "/payment",
-    icon: "💳",
+    icon: "creditCard",
     tint: "bg-purple-50",
     title: "payment",
     body: "paymentStatus",
   },
   {
     path: "/notifications",
-    icon: "🔔",
+    icon: "bell",
     tint: "bg-red-50",
     title: "notifications",
     body: "stayUpdated",
@@ -110,7 +111,7 @@ function Dashboard() {
         <div className="mt-5">
           {farmer?.district?.name && (
             <p className="text-sm text-white">
-              📍{" "}
+              <Icon name="pin" className="mr-1 inline h-4 w-4" />
               {[farmer.village?.name, farmer.district.name]
                 .filter(Boolean)
                 .join(", ")}
@@ -283,8 +284,8 @@ function Dashboard() {
         !bookings.error &&
         !current && (
           <section className="rounded-[26px] border border-emerald-200 bg-emerald-50/60 p-6 text-center shadow-sm shadow-emerald-200/30">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-3xl">
-              📅
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white">
+              <Icon name="calendar" className="h-8 w-8" />
             </div>
 
             <h2 className="mt-4 text-lg font-bold text-black">
@@ -345,9 +346,9 @@ function Dashboard() {
               className="relative rounded-2xl border border-emerald-200 bg-white p-4 text-left shadow-sm shadow-emerald-200/30 transition hover:shadow-md active:scale-[0.98]"
             >
               <div
-                className={`flex h-11 w-11 items-center justify-center rounded-xl text-xl ${service.tint}`}
+                className={`flex h-11 w-11 items-center justify-center rounded-xl ${service.tint}`}
               >
-                {service.icon}
+                <Icon name={service.icon} className="h-5 w-5" />
               </div>
 
               <h3 className="mt-3 font-semibold text-black">

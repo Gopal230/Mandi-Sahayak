@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+import Icon from "../../components/Icon";
 import { translateOfficerStatus } from "../../lib/officerStatus";
 
 const paymentStatusButtons = ["Pending", "Processing", "Cleared"];
@@ -218,7 +219,10 @@ const PaymentsPage = ({
                                 : "border-emerald-200 bg-emerald-50 text-black hover:bg-emerald-100",
                             ].join(" ")}
                           >
-                            {status === "Cleared" ? "✅" : "⏳"}{" "}
+                            <Icon
+                              name={status === "Cleared" ? "check" : "hourglass"}
+                              className="mr-1 inline h-4 w-4"
+                            />
                             {translateOfficerStatus(t, status)}
                           </button>
                         );

@@ -1,6 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+import Icon from "../components/Icon";
+
 import { useAuth } from "../auth/context";
 
 export function NotFound() {
@@ -11,8 +13,8 @@ export function NotFound() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
       <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-sm">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50 text-3xl">
-          🧭
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50">
+          <Icon name="compass" className="h-8 w-8" />
         </div>
 
         <h1 className="mt-5 text-xl font-bold text-black">{t("pageNotFound")}</h1>

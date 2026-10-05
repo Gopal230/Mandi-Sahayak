@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+import Icon from "../components/Icon";
 import LanguageToggle from "../components/LanguageToggle";
 
 /**
@@ -18,7 +19,7 @@ function PortalSelect() {
   const options = [
     {
       key: "farmer",
-      icon: "🌾",
+      icon: "grain",
       title: t("iAmFarmer"),
       subtitle: t("farmer"),
       description: t("farmerPortalDescription"),
@@ -26,7 +27,7 @@ function PortalSelect() {
     },
     {
       key: "officer",
-      icon: "🏛️",
+      icon: "building",
       title: t("iAmOfficer"),
       subtitle: t("officer"),
       description: t("officerPortalDescription"),
@@ -39,11 +40,11 @@ function PortalSelect() {
       <header className="bg-[#0e8a48] text-white">
         <div className="mx-auto flex min-h-[72px] w-full max-w-[1280px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-xl">
-              🌾
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
+              <Icon name="grain" className="h-6 w-6" />
             </span>
 
-            <span className="text-lg font-extrabold tracking-tight">{t("appName")}</span>
+            <span className="text-lg font-black tracking-tight">{t("appName")}</span>
           </div>
 
           <LanguageToggle />
@@ -70,7 +71,7 @@ function PortalSelect() {
                   onClick={() => navigate(option.to)}
                   className="flex h-full w-full flex-col items-center rounded-xl border-2 border-slate-200 bg-white px-3 py-6 text-center transition hover:border-emerald-300 hover:bg-emerald-50/40"
                 >
-                  <span className="text-3xl">{option.icon}</span>
+                  <Icon name={option.icon} className="h-8 w-8 text-[#0e8a48]" />
 
                   <span className="mt-3 block text-base font-bold text-black">
                     {option.title}

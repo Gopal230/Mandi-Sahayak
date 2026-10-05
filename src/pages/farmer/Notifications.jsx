@@ -7,6 +7,7 @@ import useApiResource from "../../hooks/useApiResource";
 import { translateNotificationType } from "../../lib/codes";
 import { formatDateTime } from "../../lib/format";
 import FarmerLayout from "../../components/FarmerLayout";
+import Icon from "../../components/Icon";
 import {
   EmptyState,
   ErrorState,
@@ -15,16 +16,16 @@ import {
 import NotificationPreferences from "../../components/NotificationPreferences";
 
 const ICONS = {
-  BOOKING_CONFIRMED: "✅",
-  BOOKING_ARRIVED: "📍",
-  BOOKING_CANCELLED: "🚫",
-  ONE_DAY_REMINDER: "⏰",
-  QUEUE_APPROACHING: "🔔",
-  TURN_APPROACHING: "🔔",
-  PROCUREMENT_COMPLETED: "🌾",
-  PAYMENT_UPDATED: "💳",
-  PAYMENT_BLOCKED: "⚠️",
-  NO_SHOW_RECORDED: "❌",
+  BOOKING_CONFIRMED: "check",
+  BOOKING_ARRIVED: "pin",
+  BOOKING_CANCELLED: "close",
+  ONE_DAY_REMINDER: "calendar",
+  QUEUE_APPROACHING: "bell",
+  TURN_APPROACHING: "bell",
+  PROCUREMENT_COMPLETED: "grain",
+  PAYMENT_UPDATED: "creditCard",
+  PAYMENT_BLOCKED: "alert",
+  NO_SHOW_RECORDED: "close",
 };
 
 function Notifications() {
@@ -155,7 +156,7 @@ function Notifications() {
             !feed.error &&
             notifications.length === 0 && (
               <EmptyState
-                icon="🔔"
+                icon="bell"
                 title={t("noNotifications")}
                 description={t(
                   "noNotificationsDescription",
@@ -177,8 +178,8 @@ function Notifications() {
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-lg shadow-sm">
-                        {ICONS[item.type] ?? "🔔"}
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+                        <Icon name={ICONS[item.type] ?? "bell"} className="h-5 w-5" />
                       </div>
 
                       <div className="min-w-0 flex-1">

@@ -1,4 +1,5 @@
 import { Component } from "react";
+import Icon from "./Icon";
 
 /**
  * Application-level error boundary.
@@ -28,8 +29,8 @@ export class ErrorBoundary extends Component {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
         <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-sm">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-2xl">
-            ⚠️
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-700">
+            <Icon name="alert" className="h-7 w-7" />
           </div>
 
           <h1 className="mt-4 text-lg font-bold text-black">Something went wrong</h1>

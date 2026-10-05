@@ -15,6 +15,7 @@ import {
   todayInZone,
 } from "../../lib/format";
 import FarmerLayout from "../../components/FarmerLayout";
+import Icon from "../../components/Icon";
 import { DataTypeNote, ErrorState, Loading, MandiNote } from "../../components/StateViews";
 
 function BookSlot() {
@@ -222,8 +223,8 @@ function BookSlot() {
           {}
           <section className={card}>
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 text-lg">
-                🌾
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50">
+                <Icon name="grain" className="h-5 w-5" />
               </div>
 
               <div>
@@ -294,8 +295,8 @@ function BookSlot() {
           {}
           <section className={card}>
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 text-lg">
-                📍
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50">
+                <Icon name="pin" className="h-5 w-5" />
               </div>
 
               <div>
@@ -355,8 +356,8 @@ function BookSlot() {
           {}
           <section className={card}>
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 text-lg">
-                ⚖️
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50">
+                <Icon name="scale" className="h-5 w-5" />
               </div>
 
               <div>
@@ -396,8 +397,8 @@ function BookSlot() {
           {}
           <section className={card}>
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 text-lg">
-                📅
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50">
+                <Icon name="calendar" className="h-5 w-5" />
               </div>
 
               <div>

@@ -67,16 +67,19 @@ export function getAllDistrictsFlat(backendDistricts = []) {
   return flat;
 }
 
-/**
- * Search across all districts and states in India.
- */
-export function searchDistricts(query, backendDistricts = []) {
+/** Filters a previously flattened district list by district or state name. */
+export function filterDistricts(query, allDistricts) {
   const q = (query || "").trim().toLowerCase();
   if (!q) return [];
-  const all = getAllDistrictsFlat(backendDistricts);
-  return all.filter(
+
+  return allDistricts.filter(
     (d) =>
       d.name.toLowerCase().includes(q) ||
       d.state.toLowerCase().includes(q)
   );
+}
+
+/** Searches all districts and states in India. */
+export function searchDistricts(query, backendDistricts = []) {
+  return filterDistricts(query, getAllDistrictsFlat(backendDistricts));
 }

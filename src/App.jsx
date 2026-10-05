@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import AuthProvider from "./auth/AuthProvider";
@@ -5,26 +6,26 @@ import { OFFICER } from "./auth/roles";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ProtectedRoute, PublicOnlyRoute } from "./components/ProtectedRoute";
 
-import Registration from "./pages/farmer/Registration";
-import OTPVerification from "./pages/farmer/OTPVerification";
-import Login from "./pages/farmer/Login";
-import Dashboard from "./pages/farmer/Dashboard";
-import BookSlot from "./pages/farmer/BookSlot";
-import BookingConfirmation from "./pages/farmer/BookingConfirmation";
-import MyBooking from "./pages/farmer/MyBooking";
-import QueueStatus from "./pages/farmer/QueueStatus";
-import Procurement from "./pages/farmer/Procurement";
-import Payment from "./pages/farmer/Payment";
-import Notifications from "./pages/farmer/Notifications";
-import Profile from "./pages/farmer/Profile";
+const Registration = lazy(() => import("./pages/farmer/Registration"));
+const OTPVerification = lazy(() => import("./pages/farmer/OTPVerification"));
+const Login = lazy(() => import("./pages/farmer/Login"));
+const Dashboard = lazy(() => import("./pages/farmer/Dashboard"));
+const BookSlot = lazy(() => import("./pages/farmer/BookSlot"));
+const BookingConfirmation = lazy(() => import("./pages/farmer/BookingConfirmation"));
+const MyBooking = lazy(() => import("./pages/farmer/MyBooking"));
+const QueueStatus = lazy(() => import("./pages/farmer/QueueStatus"));
+const Procurement = lazy(() => import("./pages/farmer/Procurement"));
+const Payment = lazy(() => import("./pages/farmer/Payment"));
+const Notifications = lazy(() => import("./pages/farmer/Notifications"));
+const Profile = lazy(() => import("./pages/farmer/Profile"));
 
-import OfficerLogin from "./pages/officer/OfficerLogin";
-import OfficerRegistration from "./pages/officer/OfficerRegistration";
-import OfficerPortal from "./pages/officer/OfficerPortal";
+const OfficerLogin = lazy(() => import("./pages/officer/OfficerLogin"));
+const OfficerRegistration = lazy(() => import("./pages/officer/OfficerRegistration"));
+const OfficerPortal = lazy(() => import("./pages/officer/OfficerPortal"));
 
-import LanguageSelect from "./pages/LanguageSelect";
-import PortalSelect from "./pages/PortalSelect";
-import NotFound from "./pages/NotFound";
+const LanguageSelect = lazy(() => import("./pages/LanguageSelect"));
+const PortalSelect = lazy(() => import("./pages/PortalSelect"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 /**
  * Route table for both portals.

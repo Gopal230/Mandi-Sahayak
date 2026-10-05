@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../auth/context";
 import LanguageToggle from "../../components/LanguageToggle";
+import Icon from "../../components/Icon";
 import api from "../../lib/api";
 import { useFaramqueueState } from "../../hooks/useFaramqueueState";
 import useApiResource from "../../hooks/useApiResource";
@@ -39,11 +40,11 @@ function OfficerPortal() {
   const { farmer, signOut } = useAuth();
 
   const NAV_ITEMS = [
-    { label: t("dashboard"), symbol: "▦", to: "/officer", end: true },
-    { label: t("queue"), symbol: "☰", to: "/officer/queue" },
-    { label: t("weighment"), symbol: "⚖", to: "/officer/weighment" },
-    { label: t("payments"), symbol: "₹", to: "/officer/payments" },
-    { label: t("reports"), symbol: "▤", to: "/officer/reports" },
+    { label: t("dashboard"), icon: "grid", to: "/officer", end: true },
+    { label: t("queue"), icon: "queue", to: "/officer/queue" },
+    { label: t("weighment"), icon: "scale", to: "/officer/weighment" },
+    { label: t("payments"), icon: "creditCard", to: "/officer/payments" },
+    { label: t("reports"), icon: "pdf", to: "/officer/reports" },
   ];
 
   // The operational screens read and write the server.
@@ -97,7 +98,7 @@ function OfficerPortal() {
           <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 w-full sm:w-auto">
               <p className="flex items-center gap-2 text-lg font-black uppercase tracking-[0.18em] text-white">
-                <span aria-hidden="true">🌾</span>
+                <Icon name="grain" className="h-5 w-5" />
                 {t("appName")}
               </p>
               <p className="mt-1 truncate text-sm font-semibold text-white/85">
@@ -107,7 +108,8 @@ function OfficerPortal() {
               </p>
               {centre.centre && (
                 <p className="mt-1 truncate text-sm font-semibold text-white/85">
-                  🏪 {centre.centre.name}
+                  <Icon name="store" className="mr-1 inline h-4 w-4" />
+                  {centre.centre.name}
                 </p>
               )}
             </div>
@@ -136,11 +138,9 @@ function OfficerPortal() {
           </div>
 
           <nav className="flex flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:gap-3 sm:overflow-visible sm:pb-0">
-            {NAV_ITEMS.map(({ label, symbol, to, end }) => (
+            {NAV_ITEMS.map(({ label, icon, to, end }) => (
               <NavLink key={label} to={to} end={end} className={navClass}>
-                <span aria-hidden="true" className="mr-1.5">
-                  {symbol}
-                </span>
+                <Icon name={icon} className="mr-1.5 inline h-4 w-4" />
                 {label}
               </NavLink>
             ))}

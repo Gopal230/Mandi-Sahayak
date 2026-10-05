@@ -8,6 +8,7 @@ import { translateError } from "../../lib/codes";
 import useApiResource from "../../hooks/useApiResource";
 import { homePathFor } from "../../auth/roles";
 import LanguageToggle from "../../components/LanguageToggle";
+import Icon from "../../components/Icon";
 
 /**
  * Only a fallback. The real length comes from the server on every challenge
@@ -248,12 +249,12 @@ function OTPVerification() {
             onClick={() => navigate("/portal")}
             className="flex items-center gap-3 text-left"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-xl">
-              🌾
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
+              <Icon name="grain" className="h-6 w-6" />
             </span>
 
             <span>
-              <span className="block text-lg font-extrabold tracking-tight">
+              <span className="block text-lg font-black tracking-tight">
                 {t("appName")}
               </span>
 
@@ -277,8 +278,8 @@ function OTPVerification() {
         <section className="w-full max-w-[500px]">
           <div className="rounded-[24px] border border-slate-200 bg-white px-5 py-7 shadow-[0_8px_30px_rgba(16,64,42,0.06)] sm:px-8 sm:py-9 lg:px-10 lg:py-10">
             <div className="text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-2xl">
-                📱
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50">
+                <Icon name="phone" className="h-7 w-7" />
               </div>
 
               <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-black">
@@ -460,7 +461,7 @@ function OTPVerification() {
             </button>
 
             <div className="mt-6 flex items-center justify-center gap-2 border-t border-slate-100 pt-5 text-xs font-semibold text-black">
-              <span>🔒</span>
+              <Icon name="lock" className="h-4 w-4" />
               <span>{t("secureVerification")}</span>
             </div>
           </div>

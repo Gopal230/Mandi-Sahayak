@@ -1,13 +1,14 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+import Icon from "./Icon";
 import LanguageToggle from "./LanguageToggle";
 
 const NAV_ITEMS = [
-  { path: "/dashboard", icon: "🏠", key: "home" },
-  { path: "/book-slot", icon: "📅", key: "book" },
-  { path: "/queue", icon: "🕐", key: "queueStatus" },
-  { path: "/profile", icon: "👤", key: "profile" },
+  { path: "/dashboard", icon: "home", key: "home" },
+  { path: "/book-slot", icon: "calendar", key: "book" },
+  { path: "/queue", icon: "clock", key: "queueStatus" },
+  { path: "/profile", icon: "user", key: "profile" },
 ];
 
 /**
@@ -43,14 +44,14 @@ export function FarmerLayout({
                   ←
                 </button>
               ) : (
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15 text-xl">
-                  🌾
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                  <Icon name="grain" className="h-6 w-6" />
                 </div>
               )}
 
               <div className="min-w-0">
-                <p className="text-lg font-bold text-white">{t("appName")}</p>
-                <h1 className="truncate text-lg font-bold text-white">{title}</h1>
+                <p className="text-lg font-black text-white">{t("appName")}</p>
+                <h1 className="truncate text-lg font-extrabold text-white">{title}</h1>
               </div>
             </div>
 
@@ -67,7 +68,7 @@ export function FarmerLayout({
 
       <main className="mx-auto w-full max-w-lg px-4 py-5">{children}</main>
 
-      <nav className="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white">
+      <nav className="fixed bottom-3 left-3 right-3 rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="mx-auto flex max-w-lg items-center justify-around px-2 py-2">
           {NAV_ITEMS.map((item) => {
             const active = location.pathname === item.path;
@@ -82,7 +83,7 @@ export function FarmerLayout({
                   active ? "font-semibold text-black" : "text-black"
                 }`}
               >
-                <span className="text-xl">{item.icon}</span>
+                <Icon name={item.icon} className="h-5 w-5" />
                 <span className="mt-1">{t(item.key)}</span>
               </button>
             );

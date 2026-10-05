@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+import Icon from "./Icon";
 import { translateOfficerStatus } from "../lib/officerStatus";
 
 export const Slot = ({ farmer, onMarkArrived, isHighlighted = false }) => {
@@ -15,23 +16,24 @@ export const Slot = ({ farmer, onMarkArrived, isHighlighted = false }) => {
     farmer.scheduledStartAt &&
     Date.now() > new Date(farmer.scheduledStartAt).getTime();
 
-  const getActionLabel = () => {
+  const getAction = () => {
     switch (farmer.status) {
       case "Queued":
-        return `🚶 ${t("arrived")}`;
+        return { icon: "walker", label: t("arrived") };
       case "Arrived":
       case "Weighing":
       case "Quality check":
       case "Recorded":
-        return `⚖️ ${t("actionWeigh")}`;
+        return { icon: "scale", label: t("actionWeigh") };
       case "Awaiting payment":
-        return `💸 ${t("actionPay")}`;
+        return { icon: "creditCard", label: t("actionPay") };
       case "Cleared":
-        return `✅ ${t("actionDone")}`;
+        return { icon: "check", label: t("actionDone") };
       default:
-        return `🚶 ${t("arrived")}`;
+        return { icon: "walker", label: t("arrived") };
     }
   };
+  const action = getAction();
 
   const handlePrimaryAction = () => {
     switch (farmer.status) {
@@ -77,7 +79,8 @@ export const Slot = ({ farmer, onMarkArrived, isHighlighted = false }) => {
           </span>
           {isLate && (
             <span className="rounded-full border border-red-300 bg-red-100 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black">
-              ⏰ {t("late")}
+              <Icon name="clock" className="mr-1 inline h-3.5 w-3.5" />
+              {t("late")}
             </span>
           )}
         </div>
@@ -120,7 +123,10 @@ export const Slot = ({ farmer, onMarkArrived, isHighlighted = false }) => {
             onClick={handlePrimaryAction}
             className="w-full rounded-full bg-green-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-green-800"
           >
-            {getActionLabel()}
+            <span className="inline-flex items-center justify-center gap-2">
+              <Icon name={action.icon} className="h-4 w-4" />
+              {action.label}
+            </span>
           </button>
         </div>
       </div>

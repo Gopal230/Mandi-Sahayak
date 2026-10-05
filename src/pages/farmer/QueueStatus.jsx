@@ -100,7 +100,7 @@ function QueueStatus() {
         !bookingCode &&
         !bookings.error && (
           <EmptyState
-            icon="🕐"
+            icon="clock"
             title={t("noActiveBooking")}
             description={t("noActiveBookingDescription")}
             action={

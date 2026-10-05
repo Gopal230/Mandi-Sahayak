@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import { translateError, statusTone } from "../lib/codes";
+import Icon from "./Icon";
 
 /** Inline spinner for a card or section that is still loading. */
 export function Loading({ label }) {
@@ -37,7 +38,7 @@ export function ErrorState({ error, onRetry, className = "" }) {
       role="alert"
     >
       <div className="flex items-start gap-3">
-        <span className="text-lg leading-none">⚠️</span>
+        <Icon name="alert" className="h-5 w-5 shrink-0 text-red-700" />
 
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-red-700">{t("somethingWentWrong")}</p>
@@ -60,11 +61,11 @@ export function ErrorState({ error, onRetry, className = "" }) {
 }
 
 /** Nothing to show, which is frequently the correct answer rather than a fault. */
-export function EmptyState({ icon = "📭", title, description, action }) {
+export function EmptyState({ icon = "inbox", title, description, action }) {
   return (
     <section className="rounded-3xl bg-white p-6 text-center shadow-sm">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50 text-3xl">
-        {icon}
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50 text-black">
+        <Icon name={icon} className="h-8 w-8" />
       </div>
 
       <h2 className="mt-4 text-lg font-bold text-black">{title}</h2>
@@ -107,7 +108,10 @@ export function DataTypeNote({ dataType }) {
   if (dataType !== "CONFIGURED") return null;
 
   return (
-    <p className="mt-2 text-xs leading-4 text-black">ℹ️ {t("configuredDataNote")}</p>
+    <p className="mt-2 flex items-start gap-1.5 text-xs leading-4 text-black">
+      <Icon name="info" className="h-4 w-4 shrink-0" />
+      {t("configuredDataNote")}
+    </p>
   );
 }
 
@@ -125,8 +129,9 @@ export function MandiNote({ mandi }) {
   if (!mandi) return null;
 
   return (
-    <p className="mt-2 text-xs leading-4 text-black">
-      🏛️ {t("mandiOfficial", { name: mandi.name, grade: mandi.grade })}
+    <p className="mt-2 flex items-start gap-1.5 text-xs leading-4 text-black">
+      <Icon name="building" className="h-4 w-4 shrink-0" />
+      {t("mandiOfficial", { name: mandi.name, grade: mandi.grade })}
       <span className="block text-black">{mandi.publisher}</span>
     </p>
   );

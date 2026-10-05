@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import api from "../../lib/api";
+import Icon from "../../components/Icon";
 import { quintalToKg } from "../../lib/format";
 import { translateOfficerStatus } from "../../lib/officerStatus";
 
@@ -206,7 +207,8 @@ const DashboardPage = ({
           }
           className="rounded-full bg-green-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-800"
         >
-          🔄 {t("refreshDashboard")}
+          <Icon name="refresh" className="mr-1 inline h-4 w-4" />
+          {t("refreshDashboard")}
         </button>
       </div>
 
@@ -354,7 +356,8 @@ const DashboardPage = ({
             onClick={handleDashboardSearch}
             className="rounded-full bg-green-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-800"
           >
-            🔍 {t("search")}
+            <Icon name="search" className="mr-1 inline h-4 w-4" />
+            {t("search")}
           </button>
         </div>
 
@@ -428,7 +431,7 @@ const DashboardPage = ({
                 : "border-emerald-200 bg-emerald-50 text-black hover:border-green-600"
             }`}
           >
-            ✏️
+            <Icon name="edit" className="h-4 w-4" />
           </button>
         </div>
 

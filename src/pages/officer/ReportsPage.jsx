@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import Icon from "../../components/Icon";
+
 import { translateOfficerStatus } from "../../lib/officerStatus";
 
 const ReportsPage = ({
@@ -148,10 +150,10 @@ const ReportsPage = ({
     <>
       {savedSummary && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4">
-          <div className="w-full max-w-md rounded-[28px] border border-emerald-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.2)]">
+          <div className="w-full max-w-md rounded-[28px] border border-emerald-200 bg-white p-6 shadow-[0_6px_18px_rgba(15,23,42,0.1)]">
             <div className="flex items-center justify-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl text-black">
-                ✓
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-black">
+                <Icon name="check" className="h-6 w-6" />
               </div>
             </div>
 
@@ -203,7 +205,8 @@ const ReportsPage = ({
               onClick={() => onAcknowledgeSavedReport?.()}
               className="mt-4 w-full rounded-full bg-green-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-800"
             >
-              ✅ {t("ok")}
+              <Icon name="check" className="mr-1 inline h-4 w-4" />
+              {t("ok")}
             </button>
           </div>
         </div>
@@ -223,7 +226,8 @@ const ReportsPage = ({
             </p>
           </div>
           <button className="rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-black hover:bg-emerald-100">
-            📄 {t("exportPdf")}
+            <Icon name="pdf" className="mr-1 inline h-4 w-4" />
+            {t("exportPdf")}
           </button>
         </div>
 

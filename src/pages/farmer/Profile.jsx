@@ -7,6 +7,7 @@ import { useAuth } from "../../auth/context";
 import useApiResource from "../../hooks/useApiResource";
 import { translateFieldErrors } from "../../lib/codes";
 import FarmerLayout from "../../components/FarmerLayout";
+import Icon from "../../components/Icon";
 import { DetailRow, ErrorState } from "../../components/StateViews";
 
 function Profile() {
@@ -105,8 +106,8 @@ function Profile() {
 
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-green-50 text-2xl">
-            👤
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-green-50">
+            <Icon name="user" className="h-8 w-8" />
           </div>
 
           <div className="min-w-0">
